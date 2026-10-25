@@ -213,3 +213,17 @@ CREATE POLICY "Public full access exam_questions" ON exam_questions FOR ALL USIN
 CREATE POLICY "Student read-write bookmarks" ON bookmarks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Student read-write attempts" ON student_attempts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Student read-write answers" ON student_answers FOR ALL USING (true) WITH CHECK (true);
+
+-- 15. ADMINISTRATORS (Platform Admin Accounts)
+CREATE TABLE IF NOT EXISTS admins (
+  id TEXT PRIMARY KEY DEFAULT ('admin-' || floor(extract(epoch from now()) * 1000)::text),
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  email TEXT,
+  full_name TEXT DEFAULT 'Administrator',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public full access admins" ON admins FOR ALL USING (true) WITH CHECK (true);

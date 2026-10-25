@@ -205,3 +205,13 @@ export interface WeaknessMetric {
   accuracy_percentage: number;
   is_weak: boolean; // accuracy < 70%
 }
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  password?: string;
+  email?: string;
+  full_name?: string;
+  is_active: boolean;
+  created_at?: string;
+}

@@ -17,11 +17,12 @@ import {
   StudentAnswer,
   RepeatedConceptStat,
   WeaknessMetric,
+  AdminUser,
 } from './types';
 import { getStorageConfig, getStorageMode, setStorageMode, recordLastSync, StorageMode } from './storageConfig';
 
 export { getStorageConfig, getStorageMode, setStorageMode, recordLastSync };
-export type { StorageMode };
+export type { StorageMode, AdminUser };
 
 // Detect Supabase credentials
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -35,6 +36,8 @@ if (supabaseUrl && supabaseKey) {
     console.warn('Could not initialize Supabase client:', err);
   }
 }
+
+export { supabase };
 
 /**
  * Checks if Supabase should be queried.
@@ -81,6 +84,7 @@ export interface DatabaseStore {
   bookmarks: Bookmark[];
   student_attempts: StudentAttempt[];
   student_answers: StudentAnswer[];
+  admins?: AdminUser[];
 }
 
 // Initial Rich Seed Data for Universal Medical Platform
@@ -2219,5 +2223,117 @@ export async function syncCloudToLocal(): Promise<{
       message: `تعذرت المزامنة: ${(err as Error).message}`,
     };
   }
+}
+
+// ==========================================
+// ADMIN USER REPOSITORY & VERIFICATION
+// ==========================================
+
+export async function getAdmins(): Promise<AdminUser[]> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .select('id, username, email, full_name, is_active, created_at')
+        .order('created_at', { ascending: false });
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Error fetching admins from Supabase:', e);
+    }
+  }
+  const store = readLocalStore();
+  return (store.admins || []).map(({ password: _, ...rest }) => rest as AdminUser);
+}
+
+export async function createAdmin(data: Omit<AdminUser, 'id'>): Promise<AdminUser> {
+  const newAdmin: AdminUser = {
+    ...data,
+    id: `admin-${Date.now()}`,
+    is_active: data.is_active ?? true,
+    created_at: new Date().toISOString(),
+  };
+
+  if (supabase) {
+    try {
+      const { data: inserted, error } = await supabase
+        .from('admins')
+        .insert([newAdmin])
+        .select('id, username, email, full_name, is_active, created_at')
+        .single();
+      if (!error && inserted) return inserted;
+    } catch (e) {
+      console.warn('Error inserting admin in Supabase:', e);
+    }
+  }
+
+  const store = readLocalStore();
+  if (!store.admins) store.admins = [];
+  store.admins.push(newAdmin);
+  writeLocalStore(store);
+
+  const { password: _, ...safeAdmin } = newAdmin;
+  return safeAdmin as AdminUser;
+}
+
+export async function deleteAdmin(id: string): Promise<boolean> {
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('admins').delete().eq('id', id);
+      if (!error) return true;
+    } catch (e) {
+      console.warn('Error deleting admin from Supabase:', e);
+    }
+  }
+  const store = readLocalStore();
+  if (store.admins) {
+    store.admins = store.admins.filter((a) => a.id !== id);
+    writeLocalStore(store);
+  }
+  return true;
+}
+
+export async function verifyAdminInDatabase(password: string, username?: string): Promise<{ valid: boolean; admin?: AdminUser }> {
+  if (!password) return { valid: false };
+
+  // 1. Check Supabase
+  if (supabase) {
+    try {
+      let query = supabase.from('admins').select('*').eq('is_active', true);
+      if (username && username.trim()) {
+        const u = username.trim().toLowerCase();
+        query = query.or(`username.ilike.${u},email.ilike.${u}`);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        const match = data.find((a: any) => a.password === password.trim());
+        if (match) {
+          const { password: _, ...safeAdmin } = match;
+          return { valid: true, admin: safeAdmin };
+        }
+      }
+    } catch (err) {
+      console.warn('Could not query Supabase admins table:', err);
+    }
+  }
+
+  // 2. Check Local Store
+  const store = readLocalStore();
+  if (store.admins && store.admins.length > 0) {
+    const match = store.admins.find((a) => {
+      if (!a.is_active) return false;
+      if (username && username.trim()) {
+        const u = username.trim().toLowerCase();
+        const matchesUser = a.username.toLowerCase() === u || (a.email && a.email.toLowerCase() === u);
+        return matchesUser && a.password === password.trim();
+      }
+      return a.password === password.trim();
+    });
+    if (match) {
+      const { password: _, ...safeAdmin } = match;
+      return { valid: true, admin: safeAdmin };
+    }
+  }
+
+  return { valid: false };
 }
 

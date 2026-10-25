@@ -24,6 +24,8 @@ import {
   FileText,
   Check,
   Copy,
+  Users,
+  KeyRound,
 } from 'lucide-react';
 import {
   AcademicYear,
@@ -35,6 +37,7 @@ import {
   Question,
   AnswerChoice,
   ExplanationItem,
+  AdminUser,
 } from '@/lib/types';
 import { parseBulkExamText, ParsedExamPayload } from '@/lib/examTextParser';
 
@@ -64,13 +67,15 @@ interface QuestionFormState {
 export default function AdminDashboardPage() {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [loggedInUser, setLoggedInUser] = useState<string>('Administrator');
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   // Active Admin Tab
   const [activeTab, setActiveTab] = useState<
-    'questions' | 'exams' | 'years' | 'modules' | 'subjects' | 'chapters' | 'concepts' | 'bulk-import' | 'system'
+    'questions' | 'exams' | 'years' | 'modules' | 'subjects' | 'chapters' | 'concepts' | 'bulk-import' | 'system' | 'admins'
   >('questions');
 
   // Bulk Import States
@@ -89,6 +94,9 @@ export default function AdminDashboardPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionSearch, setQuestionSearch] = useState('');
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [newAdminModalOpen, setNewAdminModalOpen] = useState(false);
+  const [newAdminForm, setNewAdminForm] = useState({ username: '', password: '', full_name: '', email: '' });
   const [dataLoading, setDataLoading] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [storageStatus, setStorageStatus] = useState<any>(null);
@@ -146,6 +154,9 @@ export default function AdminDashboardPage() {
         const res = await fetch('/api/admin/auth');
         const data = await res.json();
         setIsAuthenticated(!!data.authenticated);
+        if (data.authenticated && data.username) {
+          setLoggedInUser(data.username);
+        }
       } catch (err) {
         console.error('Auth verification error:', err);
       } finally {
@@ -188,6 +199,12 @@ export default function AdminDashboardPage() {
       if (qData.success) setQuestions(qData.data);
 
       try {
+        const adminsRes = await fetch('/api/admin/users');
+        const adminsData = await adminsRes.json();
+        if (adminsData.success) setAdminUsers(adminsData.data);
+      } catch {}
+
+      try {
         const sModeRes = await fetch('/api/system/storage-mode');
         const sModeData = await sModeRes.json();
         if (sModeData.success) setStorageStatus(sModeData.data);
@@ -213,11 +230,12 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: adminPassword }),
+        body: JSON.stringify({ username: adminUsername, password: adminPassword }),
       });
       const data = await res.json();
       if (data.success) {
         setIsAuthenticated(true);
+        if (data.admin?.username) setLoggedInUser(data.admin.username);
       } else {
         setAuthError(data.message || 'Invalid administrator password');
       }
@@ -547,15 +565,30 @@ D) Normal myocardium with subtle wavy fibers only
 
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="form-group" style={{ textAlign: 'left' }}>
-              <label className="form-label">Administrator Password</label>
+              <label className="form-label">Username or Email (اسم المستخدم أو البريد)</label>
+              <input
+                type="text"
+                value={adminUsername}
+                onChange={(e) => setAdminUsername(e.target.value)}
+                placeholder="e.g. admin or username (اختياري)"
+                className="form-input"
+              />
+            </div>
+
+            <div className="form-group" style={{ textAlign: 'left' }}>
+              <label className="form-label">Administrator Password *</label>
               <input
                 type="password"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                placeholder="Enter admin password (Default: MedAdmin2025!)"
+                placeholder="Enter password (from Supabase admins or master password)"
                 className="form-input"
                 required
               />
+            </div>
+
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', textAlign: 'left', lineHeight: 1.4 }}>
+              💡 يتم التحقق من بيانات الدخول مباشرة عبر جدول <code>admins</code> في <strong>Supabase</strong>.
             </div>
 
             {authError && (
@@ -649,6 +682,7 @@ D) Normal myocardium with subtle wavy fibers only
           { key: 'questions', label: `Questions (${questions.length})`, icon: FileQuestion },
           { key: 'exams', label: `Exams (${exams.length})`, icon: FileCheck2 },
           { key: 'bulk-import', label: '📥 Bulk Import (.TXT)', icon: Upload },
+          { key: 'admins', label: `Admins (${adminUsers.length})`, icon: Users },
           { key: 'years', label: `Years (${academicYears.length})`, icon: Layers },
           { key: 'modules', label: `Modules (${modules.length})`, icon: Layers },
           { key: 'subjects', label: `Subjects (${subjects.length})`, icon: BookOpen },
@@ -1715,6 +1749,267 @@ C) Choice C"
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: ADMINS MANAGEMENT (SUPABASE) */}
+      {activeTab === 'admins' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#38bdf8', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                <Users size={15} />
+                <span>Supabase Admin Access Control</span>
+              </div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.35rem' }}>
+                إدارة حسابات المشرفين (Admin Accounts)
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', maxWidth: '750px' }}>
+                يتم حفظ المشرفين وصلاحيات الدخول مباشرة في سحابة <strong>Supabase</strong> في جدول <code>admins</code>.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setNewAdminModalOpen(true)}
+              className="btn btn-primary"
+              style={{ gap: '0.5rem' }}
+            >
+              <Plus size={16} />
+              <span>إضافة مشرف جديد (New Admin)</span>
+            </button>
+          </div>
+
+          {/* Supabase Notice Banner */}
+          <div
+            style={{
+              padding: '1.25rem 1.5rem',
+              borderRadius: 'var(--radius-lg)',
+              background: 'rgba(6, 182, 212, 0.08)',
+              border: '1.5px solid rgba(6, 182, 212, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+                <KeyRound size={20} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                  قاعدة البيانات السحابية: جدول <code>admins</code> في Supabase
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  يمكنك أيضاً إضافة المشرفين وتعديل كلمات المرور مباشرة من Supabase Dashboard عبر <strong>Table Editor ⬅️ admins</strong>.
+                </div>
+              </div>
+            </div>
+            <span className="badge badge-teal">Cloud Sync Active</span>
+          </div>
+
+          {/* Admins List Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+            {adminUsers.length === 0 ? (
+              <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center', gridColumn: '1 / -1', color: 'var(--text-muted)' }}>
+                لم يتم إضافة مشرفين في جدول Supabase بعد. يمكنك الضغط على "إضافة مشرف جديد" لإنشاء أول حساب، أو استخدام كلمة المرور الاحتياطية.
+              </div>
+            ) : (
+              adminUsers.map((adm) => (
+                <div
+                  key={adm.id}
+                  className="glass-panel"
+                  style={{
+                    padding: '1.5rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(168, 85, 247, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc', fontWeight: 700, fontSize: '1rem' }}>
+                        {adm.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '1rem', color: 'var(--text-main)' }}>
+                          {adm.full_name || adm.username}
+                        </strong>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                          @{adm.username}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="badge badge-purple">{adm.is_active ? 'نشط (Active)' : 'معطل'}</span>
+                  </div>
+
+                  {adm.email && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                      📧 {adm.email}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                      ID: {adm.id}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`هل أنت متأكد من حذف المشرف "${adm.username}"؟`)) return;
+                        try {
+                          const res = await fetch(`/api/admin/users?id=${adm.id}`, { method: 'DELETE' });
+                          const d = await res.json();
+                          if (d.success) {
+                            showFeedback('success', `تم حذف المشرف ${adm.username} بنجاح`);
+                            refreshAllData();
+                          } else {
+                            showFeedback('error', 'فشل حذف المشرف');
+                          }
+                        } catch (err) {
+                          showFeedback('error', String(err));
+                        }
+                      }}
+                      className="btn btn-outline btn-sm"
+                      style={{ color: '#fb7185', borderColor: 'rgba(251, 113, 133, 0.3)', padding: '0.3rem 0.6rem', fontSize: '0.78rem' }}
+                    >
+                      <Trash2 size={13} />
+                      <span>حذف</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* NEW ADMIN CREATION MODAL */}
+      {newAdminModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 95,
+            background: 'rgba(5, 10, 20, 0.85)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            className="glass-panel animate-fade-in"
+            style={{
+              maxWidth: '500px',
+              width: '100%',
+              padding: '2rem',
+              borderRadius: 'var(--radius-xl)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-highlight)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>إضافة مشرف جديد (New Admin)</h3>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  سيتم حفظ هذا الحساب في سحابة Supabase في جدول admins
+                </div>
+              </div>
+              <button onClick={() => setNewAdminModalOpen(false)} style={{ color: 'var(--text-dim)', padding: '0.5rem' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newAdminForm.username.trim() || !newAdminForm.password.trim()) {
+                  showFeedback('error', 'اسم المستخدم وكلمة المرور مطلوبان');
+                  return;
+                }
+                try {
+                  const res = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newAdminForm),
+                  });
+                  const d = await res.json();
+                  if (d.success) {
+                    showFeedback('success', `تمت إضافة المشرف "${newAdminForm.username}" بنجاح في Supabase!`);
+                    setNewAdminModalOpen(false);
+                    setNewAdminForm({ username: '', password: '', full_name: '', email: '' });
+                    refreshAllData();
+                  } else {
+                    showFeedback('error', d.message || 'فشلت إضافة المشرف');
+                  }
+                } catch (err) {
+                  showFeedback('error', String(err));
+                }
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+            >
+              <div className="form-group">
+                <label className="form-label">Username (اسم المستخدم للـ Admin) *</label>
+                <input
+                  type="text"
+                  value={newAdminForm.username}
+                  onChange={(e) => setNewAdminForm({ ...newAdminForm, username: e.target.value })}
+                  placeholder="e.g. dr_sohaib"
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password (كلمة المرور) *</label>
+                <input
+                  type="password"
+                  value={newAdminForm.password}
+                  onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
+                  placeholder="كلمة مرور المشرف"
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Full Name (الاسم الكامل)</label>
+                <input
+                  type="text"
+                  value={newAdminForm.full_name}
+                  onChange={(e) => setNewAdminForm({ ...newAdminForm, full_name: e.target.value })}
+                  placeholder="e.g. Dr. Sohaib"
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Email (البريد الإلكتروني - اختياري)</label>
+                <input
+                  type="email"
+                  value={newAdminForm.email}
+                  onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
+                  placeholder="e.g. admin@example.com"
+                  className="form-input"
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                <button type="button" onClick={() => setNewAdminModalOpen(false)} className="btn btn-secondary">
+                  إلغاء
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  حفظ المشرف في Supabase
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
       {/* ========================================================== */}

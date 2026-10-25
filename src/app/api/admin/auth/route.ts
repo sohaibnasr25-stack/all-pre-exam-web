@@ -1,15 +1,26 @@
 import { NextResponse } from 'next/server';
-import { verifyAdminPassword, generateSessionToken, validateSessionToken } from '@/lib/adminAuth';
+import { verifyAdminCredentials, generateSessionToken, validateSessionToken } from '@/lib/adminAuth';
 
 export async function POST(req: Request) {
   try {
-    const { password } = await req.json();
-    if (!verifyAdminPassword(password)) {
-      return NextResponse.json({ success: false, message: 'Invalid administrator credentials' }, { status: 401 });
+    const { password, username } = await req.json();
+    const auth = await verifyAdminCredentials(password, username);
+
+    if (!auth.valid) {
+      return NextResponse.json({
+        success: false,
+        message: 'Invalid administrator credentials (اسم المستخدم أو كلمة المرور غير صحيحة)',
+      }, { status: 401 });
     }
 
-    const token = generateSessionToken();
-    const response = NextResponse.json({ success: true, message: 'Admin authentication successful' });
+    const adminUsername = auth.admin?.username || username || 'admin';
+    const token = generateSessionToken(adminUsername);
+    const response = NextResponse.json({
+      success: true,
+      message: 'Admin authentication successful',
+      admin: auth.admin,
+    });
+
     response.cookies.set('med_admin_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -29,7 +40,18 @@ export async function GET(req: Request) {
   const match = cookieHeader.match(/med_admin_session=([^;]+)/);
   const token = match ? match[1] : null;
   const isAuthorized = validateSessionToken(token);
-  return NextResponse.json({ authenticated: isAuthorized });
+
+  let username = 'admin';
+  if (token) {
+    const parts = token.split('_');
+    if (parts.length === 4) {
+      try {
+        username = Buffer.from(parts[2], 'base64url').toString('utf8');
+      } catch {}
+    }
+  }
+
+  return NextResponse.json({ authenticated: isAuthorized, username: isAuthorized ? username : null });
 }
 
 export async function DELETE() {
@@ -37,3 +59,4 @@ export async function DELETE() {
   response.cookies.delete('med_admin_session');
   return response;
 }
+
