@@ -688,7 +688,8 @@ export async function createQuestion(payload: {
 
   // Insert choices
   const insertedChoices: AnswerChoice[] = [];
-  payload.answer_choices.forEach((c, idx) => {
+  const safeChoices = Array.isArray(payload.answer_choices) ? payload.answer_choices : [];
+  safeChoices.forEach((c, idx) => {
     const choiceItem: AnswerChoice = {
       ...c,
       id: `c-${newQId}-${idx}`,
@@ -701,7 +702,8 @@ export async function createQuestion(payload: {
 
   // Insert explanations
   const insertedExpls: ExplanationItem[] = [];
-  payload.explanations.forEach((e, idx) => {
+  const safeExpls = Array.isArray(payload.explanations) ? payload.explanations : [];
+  safeExpls.forEach((e, idx) => {
     // Map choice_letter to choice_id if present
     const matchedChoice = insertedChoices.find((c) => c.choice_letter === e.choice_letter);
     const explItem: ExplanationItem = {
@@ -716,8 +718,9 @@ export async function createQuestion(payload: {
   });
 
   // Link to exams
-  if (payload.exam_ids && payload.exam_ids.length > 0) {
-    payload.exam_ids.forEach((eid, idx) => {
+  const safeExamIds = Array.isArray(payload.exam_ids) ? payload.exam_ids : [];
+  if (safeExamIds.length > 0) {
+    safeExamIds.forEach((eid, idx) => {
       store.exam_questions.push({
         id: `eq-${Date.now()}-${idx}`,
         exam_id: eid,
@@ -733,7 +736,7 @@ export async function createQuestion(payload: {
     ...newQuestion,
     answer_choices: insertedChoices,
     explanations: insertedExpls,
-    exam_ids: payload.exam_ids || [],
+    exam_ids: safeExamIds,
   };
 }
 
@@ -750,9 +753,9 @@ export async function updateQuestion(
   const qIndex = store.questions.findIndex((q) => q.id === id);
   if (qIndex === -1) return null;
 
-  store.questions[qIndex] = { ...store.questions[qIndex], ...payload.question };
+  store.questions[qIndex] = { ...store.questions[qIndex], ...(payload.question || {}) };
 
-  if (payload.answer_choices) {
+  if (Array.isArray(payload.answer_choices)) {
     store.answer_choices = store.answer_choices.filter((c) => c.question_id !== id);
     payload.answer_choices.forEach((c, idx) => {
       store.answer_choices.push({
@@ -766,7 +769,7 @@ export async function updateQuestion(
     });
   }
 
-  if (payload.explanations) {
+  if (Array.isArray(payload.explanations)) {
     store.explanations = store.explanations.filter((e) => e.question_id !== id);
     payload.explanations.forEach((e, idx) => {
       const matchedChoice = store.answer_choices.find(
@@ -788,7 +791,7 @@ export async function updateQuestion(
     });
   }
 
-  if (payload.exam_ids) {
+  if (Array.isArray(payload.exam_ids)) {
     store.exam_questions = store.exam_questions.filter((eq) => eq.question_id !== id);
     payload.exam_ids.forEach((eid, idx) => {
       store.exam_questions.push({

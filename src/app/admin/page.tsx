@@ -147,11 +147,25 @@ export default function AdminDashboardPage() {
     ],
   });
 
+  // Admin authenticated fetch wrapper that always attaches Bearer token & cookies
+  const adminFetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('omnimed_admin_token') : null;
+    const headers = new Headers(init.headers || {});
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    return fetch(input, { ...init, credentials: 'include', headers });
+  };
+
   // Check auth on mount
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch('/api/admin/auth');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('omnimed_admin_token') : null;
+        const res = await fetch('/api/admin/auth', {
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const data = await res.json();
         setIsAuthenticated(!!data.authenticated);
         if (data.authenticated && data.username) {
@@ -171,13 +185,13 @@ export default function AdminDashboardPage() {
     setDataLoading(true);
     try {
       const [yRes, mRes, sRes, cRes, conRes, eRes, qRes] = await Promise.all([
-        fetch('/api/academic-years'),
-        fetch('/api/modules'),
-        fetch('/api/subjects'),
-        fetch('/api/chapters'),
-        fetch('/api/concepts'),
-        fetch('/api/exams'),
-        fetch('/api/questions'),
+        adminFetch('/api/academic-years'),
+        adminFetch('/api/modules'),
+        adminFetch('/api/subjects'),
+        adminFetch('/api/chapters'),
+        adminFetch('/api/concepts'),
+        adminFetch('/api/exams'),
+        adminFetch('/api/questions'),
       ]);
 
       const [yData, mData, sData, cData, conData, eData, qData] = await Promise.all([
@@ -199,13 +213,13 @@ export default function AdminDashboardPage() {
       if (qData.success) setQuestions(qData.data);
 
       try {
-        const adminsRes = await fetch('/api/admin/users');
+        const adminsRes = await adminFetch('/api/admin/users');
         const adminsData = await adminsRes.json();
         if (adminsData.success) setAdminUsers(adminsData.data);
       } catch {}
 
       try {
-        const sModeRes = await fetch('/api/system/storage-mode');
+        const sModeRes = await adminFetch('/api/system/storage-mode');
         const sModeData = await sModeRes.json();
         if (sModeData.success) setStorageStatus(sModeData.data);
       } catch {}
@@ -230,10 +244,14 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username: adminUsername, password: adminPassword }),
       });
       const data = await res.json();
       if (data.success) {
+        if (data.token && typeof window !== 'undefined') {
+          localStorage.setItem('omnimed_admin_token', data.token);
+        }
         setIsAuthenticated(true);
         if (data.admin?.username) setLoggedInUser(data.admin.username);
       } else {
@@ -246,7 +264,10 @@ export default function AdminDashboardPage() {
 
   // Handle Logout
   const handleLogout = async () => {
-    await fetch('/api/admin/auth', { method: 'DELETE' });
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('omnimed_admin_token');
+    }
+    await fetch('/api/admin/auth', { method: 'DELETE', credentials: 'include' });
     setIsAuthenticated(false);
   };
 
@@ -425,7 +446,7 @@ D) Normal myocardium with subtle wavy fibers only
 
     try {
       setBulkLoading(true);
-      const res = await fetch('/api/admin/bulk-import', {
+      const res = await adminFetch('/api/admin/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsedExam),
@@ -441,7 +462,7 @@ D) Normal myocardium with subtle wavy fibers only
         showFeedback('success', `Successfully imported "${data.exam_title}" with ${data.questions_count} questions!`);
         refreshAllData();
       } else {
-        showFeedback('error', data.message || 'Failed to import exam.');
+        showFeedback('error', data.message || data.error || 'Failed to import exam.');
       }
     } catch (err) {
       showFeedback('error', 'Error executing bulk import: ' + String(err));
@@ -476,13 +497,13 @@ D) Normal myocardium with subtle wavy fibers only
     try {
       let res;
       if (editingQuestionId) {
-        res = await fetch('/api/questions', {
+        res = await adminFetch('/api/questions', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editingQuestionId, ...payload }),
         });
       } else {
-        res = await fetch('/api/questions', {
+        res = await adminFetch('/api/questions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -495,7 +516,7 @@ D) Normal myocardium with subtle wavy fibers only
         setQuestionModalOpen(false);
         refreshAllData();
       } else {
-        showFeedback('error', data.message || 'Operation failed');
+        showFeedback('error', data.message || data.error || 'Operation failed');
       }
     } catch (err) {
       showFeedback('error', String(err));
@@ -505,11 +526,13 @@ D) Normal myocardium with subtle wavy fibers only
   const handleDeleteQuestion = async (id: string) => {
     if (!confirm('Are you sure you want to delete this question?')) return;
     try {
-      const res = await fetch(`/api/questions?id=${id}`, { method: 'DELETE' });
+      const res = await adminFetch(`/api/questions?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         showFeedback('success', 'Question deleted');
         refreshAllData();
+      } else {
+        showFeedback('error', data.message || data.error || 'Operation failed');
       }
     } catch (err) {
       showFeedback('error', String(err));
@@ -888,7 +911,7 @@ D) Normal myocardium with subtle wavy fibers only
                   <button
                     onClick={async () => {
                       if (!confirm(`Delete ${exam.title}?`)) return;
-                      await fetch(`/api/exams?id=${exam.id}`, { method: 'DELETE' });
+                      await adminFetch(`/api/exams?id=${exam.id}`, { method: 'DELETE' });
                       refreshAllData();
                     }}
                     className="btn btn-danger btn-sm"
@@ -912,7 +935,7 @@ D) Normal myocardium with subtle wavy fibers only
                 const name = prompt('Academic Year Name (e.g. Year 4: Speciality Clerkships):');
                 const code = prompt('Code (e.g. MED-Y4):');
                 if (!name || !code) return;
-                await fetch('/api/academic-years', {
+                await adminFetch('/api/academic-years', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ name, code, order_index: academicYears.length + 1, is_active: true }),
@@ -940,7 +963,7 @@ D) Normal myocardium with subtle wavy fibers only
                 <button
                   onClick={async () => {
                     if (!confirm(`Delete ${year.name}?`)) return;
-                    await fetch(`/api/academic-years?id=${year.id}`, { method: 'DELETE' });
+                    await adminFetch(`/api/academic-years?id=${year.id}`, { method: 'DELETE' });
                     refreshAllData();
                   }}
                   className="btn btn-danger btn-sm"
@@ -963,7 +986,7 @@ D) Normal myocardium with subtle wavy fibers only
                 const code = prompt('Code (e.g. GIT-201):');
                 if (!name || !code) return;
                 const yearId = academicYears[0]?.id;
-                await fetch('/api/modules', {
+                await adminFetch('/api/modules', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ name, code, academic_year_id: yearId, order_index: modules.length + 1 }),
@@ -993,7 +1016,7 @@ D) Normal myocardium with subtle wavy fibers only
                 <button
                   onClick={async () => {
                     if (!confirm(`Delete ${mod.name}?`)) return;
-                    await fetch(`/api/modules?id=${mod.id}`, { method: 'DELETE' });
+                    await adminFetch(`/api/modules?id=${mod.id}`, { method: 'DELETE' });
                     refreshAllData();
                   }}
                   className="btn btn-danger btn-sm"
@@ -1016,7 +1039,7 @@ D) Normal myocardium with subtle wavy fibers only
                 const code = prompt('Code (e.g. C-PHA):');
                 if (!name || !code) return;
                 const modId = modules[0]?.id;
-                await fetch('/api/subjects', {
+                await adminFetch('/api/subjects', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ name, code, module_id: modId, order_index: subjects.length + 1 }),
@@ -1046,7 +1069,7 @@ D) Normal myocardium with subtle wavy fibers only
                 <button
                   onClick={async () => {
                     if (!confirm(`Delete ${sub.name}?`)) return;
-                    await fetch(`/api/subjects?id=${sub.id}`, { method: 'DELETE' });
+                    await adminFetch(`/api/subjects?id=${sub.id}`, { method: 'DELETE' });
                     refreshAllData();
                   }}
                   className="btn btn-danger btn-sm"
@@ -1068,7 +1091,7 @@ D) Normal myocardium with subtle wavy fibers only
                 const name = prompt('Chapter Title:');
                 if (!name) return;
                 const subId = subjects[0]?.id;
-                await fetch('/api/chapters', {
+                await adminFetch('/api/chapters', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ name, subject_id: subId, order_index: chapters.length + 1 }),
@@ -1098,7 +1121,7 @@ D) Normal myocardium with subtle wavy fibers only
                 <button
                   onClick={async () => {
                     if (!confirm(`Delete ${chap.name}?`)) return;
-                    await fetch(`/api/chapters?id=${chap.id}`, { method: 'DELETE' });
+                    await adminFetch(`/api/chapters?id=${chap.id}`, { method: 'DELETE' });
                     refreshAllData();
                   }}
                   className="btn btn-danger btn-sm"
@@ -1120,7 +1143,7 @@ D) Normal myocardium with subtle wavy fibers only
                 const name = prompt('Concept Name (e.g. Frank-Starling Mechanism):');
                 if (!name) return;
                 const chapId = chapters[0]?.id;
-                await fetch('/api/concepts', {
+                await adminFetch('/api/concepts', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ name, chapter_id: chapId, order_index: concepts.length + 1 }),
@@ -1150,7 +1173,7 @@ D) Normal myocardium with subtle wavy fibers only
                 <button
                   onClick={async () => {
                     if (!confirm(`Delete ${con.name}?`)) return;
-                    await fetch(`/api/concepts?id=${con.id}`, { method: 'DELETE' });
+                    await adminFetch(`/api/concepts?id=${con.id}`, { method: 'DELETE' });
                     refreshAllData();
                   }}
                   className="btn btn-danger btn-sm"
@@ -1197,7 +1220,7 @@ D) Normal myocardium with subtle wavy fibers only
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button
                     onClick={async () => {
-                      const res = await fetch('/api/system/storage-mode', {
+                      const res = await adminFetch('/api/system/storage-mode', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ mode: 'local_only' }),
@@ -1214,7 +1237,7 @@ D) Normal myocardium with subtle wavy fibers only
                   </button>
                   <button
                     onClick={async () => {
-                      const res = await fetch('/api/system/storage-mode', {
+                      const res = await adminFetch('/api/system/storage-mode', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ mode: 'auto' }),
@@ -1268,11 +1291,13 @@ D) Normal myocardium with subtle wavy fibers only
               <button
                 onClick={async () => {
                   if (!confirm('تحذير: سيتم مسح وتفريغ كافة الامتحانات والأسئلة والمناهج والنتائج لتصبح قاعدة البيانات خالية تماماً (Clean Slate) مع الاحتفاظ بحسابات الأدمن. هل تريد المتابعة؟')) return;
-                  const res = await fetch('/api/admin/reset', { method: 'POST' });
+                  const res = await adminFetch('/api/admin/reset', { method: 'POST' });
                   const d = await res.json();
                   if (d.success) {
                     showFeedback('success', 'تم تفريغ قاعدة البيانات بنجاح وأصبحت خالية تماماً');
                     refreshAllData();
+                  } else {
+                    showFeedback('error', d.message || d.error || 'فشلت عملية مسح البيانات');
                   }
                 }}
                 className="btn btn-danger"
@@ -1861,13 +1886,13 @@ C) Choice C"
                       onClick={async () => {
                         if (!confirm(`هل أنت متأكد من حذف المشرف "${adm.username}"؟`)) return;
                         try {
-                          const res = await fetch(`/api/admin/users?id=${adm.id}`, { method: 'DELETE' });
+                          const res = await adminFetch(`/api/admin/users?id=${adm.id}`, { method: 'DELETE' });
                           const d = await res.json();
                           if (d.success) {
                             showFeedback('success', `تم حذف المشرف ${adm.username} بنجاح`);
                             refreshAllData();
                           } else {
-                            showFeedback('error', 'فشل حذف المشرف');
+                            showFeedback('error', d.message || d.error || 'فشل حذف المشرف');
                           }
                         } catch (err) {
                           showFeedback('error', String(err));
@@ -1934,7 +1959,7 @@ C) Choice C"
                   return;
                 }
                 try {
-                  const res = await fetch('/api/admin/users', {
+                  const res = await adminFetch('/api/admin/users', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newAdminForm),
@@ -1946,7 +1971,7 @@ C) Choice C"
                     setNewAdminForm({ username: '', password: '', full_name: '', email: '' });
                     refreshAllData();
                   } else {
-                    showFeedback('error', d.message || 'فشلت إضافة المشرف');
+                    showFeedback('error', d.message || d.error || 'فشلت إضافة المشرف');
                   }
                 } catch (err) {
                   showFeedback('error', String(err));
@@ -2065,7 +2090,7 @@ C) Choice C"
                   return;
                 }
                 try {
-                  const res = await fetch('/api/exams', {
+                  const res = await adminFetch('/api/exams', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(examForm),
@@ -2076,7 +2101,7 @@ C) Choice C"
                     setExamModalOpen(false);
                     refreshAllData();
                   } else {
-                    showFeedback('error', d.message || 'Failed to create exam');
+                    showFeedback('error', d.message || d.error || 'Failed to create exam');
                   }
                 } catch (err) {
                   showFeedback('error', String(err));

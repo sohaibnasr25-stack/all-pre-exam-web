@@ -2,24 +2,24 @@ import { NextResponse } from 'next/server';
 import { isAuthorizedAdmin } from '@/lib/adminAuth';
 import { getAdmins, createAdmin, deleteAdmin } from '@/lib/db';
 
-export async function GET() {
-  const authorized = await isAuthorizedAdmin();
+export async function GET(req: Request) {
+  const authorized = await isAuthorizedAdmin(req);
   if (!authorized) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized. Admin session required.' }, { status: 401 });
   }
 
   try {
     const admins = await getAdmins();
     return NextResponse.json({ success: true, data: admins });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
-  const authorized = await isAuthorizedAdmin();
+  const authorized = await isAuthorizedAdmin(req);
   if (!authorized) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized. Admin session required.' }, { status: 401 });
   }
 
   try {
@@ -41,14 +41,14 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: created });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
-  const authorized = await isAuthorizedAdmin();
+  const authorized = await isAuthorizedAdmin(req);
   if (!authorized) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized. Admin session required.' }, { status: 401 });
   }
 
   try {
@@ -61,6 +61,6 @@ export async function DELETE(req: Request) {
     const deleted = await deleteAdmin(id);
     return NextResponse.json({ success: deleted });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }
 }

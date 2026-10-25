@@ -78,8 +78,27 @@ export function validateSessionToken(token: string | null | undefined): boolean 
   }
 }
 
-export async function isAuthorizedAdmin(): Promise<boolean> {
+export async function isAuthorizedAdmin(req?: Request): Promise<boolean> {
   try {
+    if (req) {
+      // 1. Check Authorization Bearer header
+      const authHeader = req.headers.get('authorization') || '';
+      if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7).trim();
+        if (validateSessionToken(token)) return true;
+      }
+
+      // 2. Check custom x-admin-token header
+      const xAdminToken = req.headers.get('x-admin-token');
+      if (xAdminToken && validateSessionToken(xAdminToken)) return true;
+
+      // 3. Check Cookie header directly on req
+      const cookieHeader = req.headers.get('cookie') || '';
+      const match = cookieHeader.match(/med_admin_session=([^;]+)/);
+      if (match && validateSessionToken(match[1])) return true;
+    }
+
+    // 4. Next.js cookies() helper fallback
     const cookieStore = await cookies();
     const token = cookieStore.get('med_admin_session')?.value;
     return validateSessionToken(token);
@@ -87,4 +106,5 @@ export async function isAuthorizedAdmin(): Promise<boolean> {
     return false;
   }
 }
+
 

@@ -18,12 +18,13 @@ export async function POST(req: Request) {
     const response = NextResponse.json({
       success: true,
       message: 'Admin authentication successful',
+      token,
       admin: auth.admin,
     });
 
     response.cookies.set('med_admin_session', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allows session to work reliably on local HTTP, development, and production
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days
@@ -36,9 +37,23 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const cookieHeader = req.headers.get('cookie') || '';
-  const match = cookieHeader.match(/med_admin_session=([^;]+)/);
-  const token = match ? match[1] : null;
+  let token: string | null = null;
+
+  // 1. Check Authorization Bearer header
+  const authHeader = req.headers.get('authorization') || '';
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else if (req.headers.get('x-admin-token')) {
+    token = req.headers.get('x-admin-token');
+  }
+
+  // 2. Check Cookie
+  if (!token) {
+    const cookieHeader = req.headers.get('cookie') || '';
+    const match = cookieHeader.match(/med_admin_session=([^;]+)/);
+    token = match ? match[1] : null;
+  }
+
   const isAuthorized = validateSessionToken(token);
 
   let username = 'admin';

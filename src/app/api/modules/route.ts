@@ -14,9 +14,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const authorized = await isAuthorizedAdmin();
+  const authorized = await isAuthorizedAdmin(req);
   if (!authorized) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized. Admin session required.' }, { status: 401 });
   }
 
   try {
@@ -27,14 +27,14 @@ export async function POST(req: Request) {
     const created = await createModule(body);
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }
 }
 
 export async function PUT(req: Request) {
-  const authorized = await isAuthorizedAdmin();
+  const authorized = await isAuthorizedAdmin(req);
   if (!authorized) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized. Admin session required.' }, { status: 401 });
   }
 
   try {
@@ -45,14 +45,14 @@ export async function PUT(req: Request) {
     const updated = await updateModule(id, updates);
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
-  const authorized = await isAuthorizedAdmin();
+  const authorized = await isAuthorizedAdmin(req);
   if (!authorized) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ success: false, message: 'Unauthorized. Admin session required.' }, { status: 401 });
   }
 
   try {
@@ -64,6 +64,6 @@ export async function DELETE(req: Request) {
     await deleteModule(id);
     return NextResponse.json({ success: true, message: 'Module deleted' });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }
 }

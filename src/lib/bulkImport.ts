@@ -92,7 +92,8 @@ function importSingleExamIntoStore(
   store.exams.push(newExam);
 
   // 4. Process and insert each question
-  payload.questions.forEach((q, idx) => {
+  const safeQuestions = Array.isArray(payload.questions) ? payload.questions : [];
+  safeQuestions.forEach((q, idx) => {
     const qTimestamp = timestamp + idx;
     const newQId = `q-${qTimestamp}`;
 
@@ -172,7 +173,8 @@ function importSingleExamIntoStore(
     });
 
     // Insert Answer Choices and Explanations
-    q.choices.forEach((c, cIdx) => {
+    const safeChoices = Array.isArray(q.choices) ? q.choices : [];
+    safeChoices.forEach((c, cIdx) => {
       const choiceId = `c-${newQId}-${cIdx}`;
       const choiceObj: AnswerChoice = {
         id: choiceId,
@@ -203,7 +205,7 @@ function importSingleExamIntoStore(
     });
   });
 
-  return { examId, examTitle: newExam.title, count: payload.questions.length };
+  return { examId, examTitle: newExam.title, count: safeQuestions.length };
 }
 
 /**
