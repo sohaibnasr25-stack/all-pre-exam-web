@@ -15,6 +15,7 @@ import {
   Play,
   Layers,
   GraduationCap,
+  RotateCcw,
 } from 'lucide-react';
 
 interface PlatformStats {
@@ -55,29 +56,63 @@ export default function StudentDashboard() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [recentExams, setRecentExams] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, examsRes] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/exams'),
+      ]);
+
+      const statsData = await statsRes.json();
+      const examsData = await examsRes.json();
+
+      if (statsData.success) setStats(statsData.data);
+      if (examsData.success) setRecentExams(examsData.data.slice(0, 3));
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [statsRes, examsRes] = await Promise.all([
-          fetch('/api/stats'),
-          fetch('/api/exams'),
-        ]);
-
-        const statsData = await statsRes.json();
-        const examsData = await examsRes.json();
-
-        if (statsData.success) setStats(statsData.data);
-        if (examsData.success) setRecentExams(examsData.data.slice(0, 3));
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+    fetchDashboardData();
   }, []);
+
+  const handleResetProgress = async () => {
+    const confirmed = window.confirm(
+      'هل أنت متأكد من رغبتك في مسح كافة نتائجك وحلولك السابقة؟\nسيتم تصفير جميع محاولاتك وإحصائياتك لتبدأ من جديد بشكل كامل.'
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    setResetMessage(null);
+    try {
+      const res = await fetch('/api/attempts?student_id=default_student', { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        try {
+          Object.keys(localStorage).forEach((k) => {
+            if (k.startsWith('omnimed_active_')) {
+              localStorage.removeItem(k);
+            }
+          });
+        } catch {}
+
+        setResetMessage({ type: 'success', text: 'تم مسح كافة النتائج والحلول السابقة بنجاح! تم تصفير سجل درجاتك ومحاولاتك.' });
+        await fetchDashboardData();
+      } else {
+        setResetMessage({ type: 'error', text: data.message || 'حدث خطأ أثناء مسح النتائج' });
+      }
+    } catch (err) {
+      setResetMessage({ type: 'error', text: 'تعذر الاتصال بالخادم لمسح النتائج' });
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
@@ -154,22 +189,92 @@ export default function StudentDashboard() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>Academic Years:</span>
-            <strong style={{ color: 'var(--blue)' }}>{stats?.total_years ?? 3}</strong>
+            <strong style={{ color: 'var(--blue)' }}>{stats?.total_years ?? 0}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>System Modules:</span>
-            <strong style={{ color: 'var(--primary)' }}>{stats?.total_modules ?? 4}</strong>
+            <strong style={{ color: 'var(--primary)' }}>{stats?.total_modules ?? 0}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>Core Subjects:</span>
-            <strong style={{ color: 'var(--indigo)' }}>{stats?.total_subjects ?? 5}</strong>
+            <strong style={{ color: 'var(--indigo)' }}>{stats?.total_subjects ?? 0}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>Medical Concepts:</span>
-            <strong style={{ color: 'var(--warning)' }}>{stats?.total_concepts ?? 6}</strong>
+            <strong style={{ color: 'var(--warning)' }}>{stats?.total_concepts ?? 0}</strong>
           </div>
         </div>
       </div>
+
+      {/* Student Progress Header & Reset Button Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CheckCircle2 size={18} color="#06b6d4" />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+            سجل تقدم ونتائج الطالب (Student Performance)
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleResetProgress}
+          disabled={resetting}
+          className="btn btn-sm"
+          style={{
+            gap: '0.45rem',
+            color: '#fb7185',
+            border: '1px solid rgba(244, 63, 94, 0.4)',
+            background: 'rgba(244, 63, 94, 0.08)',
+            cursor: resetting ? 'not-allowed' : 'pointer',
+            padding: '0.5rem 0.9rem',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+          }}
+          title="مسح كافة النتائج والحلول السابقة وتصفير سجل الطالب"
+        >
+          <RotateCcw size={14} className={resetting ? 'animate-spin' : ''} />
+          <span>{resetting ? 'جاري المسح...' : 'مسح النتائج والحلول السابقة (Reset)'}</span>
+        </button>
+      </div>
+
+      {/* Reset Confirmation Banner */}
+      {resetMessage && (
+        <div
+          className="glass-panel"
+          style={{
+            padding: '1rem 1.25rem',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1.5rem',
+            background: resetMessage.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
+            border: `1px solid ${resetMessage.type === 'success' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)'}`,
+            color: resetMessage.type === 'success' ? '#34d399' : '#fb7185',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.92rem',
+            fontWeight: 600,
+          }}
+        >
+          <span>{resetMessage.text}</span>
+          <button
+            onClick={() => setResetMessage(null)}
+            style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '1.1rem' }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Primary Performance Metric Cards */}
       <div
@@ -189,10 +294,10 @@ export default function StudentDashboard() {
             </div>
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#38bdf8' }}>
-            {stats?.completed_exams ?? 1}
+            {stats?.completed_exams ?? 0}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
-            Of {stats?.total_exams ?? 3} available complete exams
+            Of {stats?.total_exams ?? 0} available complete exams
           </div>
         </div>
 
@@ -205,7 +310,7 @@ export default function StudentDashboard() {
             </div>
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#34d399' }}>
-            {stats?.questions_answered ?? 5}
+            {stats?.questions_answered ?? 0}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
             Across all practice sessions & exams
@@ -221,7 +326,7 @@ export default function StudentDashboard() {
             </div>
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fbbf24' }}>
-            {stats?.overall_accuracy ?? 80}%
+            {stats?.overall_accuracy ?? 0}%
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
             Passing threshold: 70%
@@ -237,7 +342,7 @@ export default function StudentDashboard() {
             </div>
           </div>
           <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#c084fc' }}>
-            {stats?.bookmarks_count ?? 2}
+            {stats?.bookmarks_count ?? 0}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
             Flagged & categorized questions
@@ -424,53 +529,76 @@ export default function StudentDashboard() {
               Available Exams
             </h2>
             <Link href="/exams" style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 600 }}>
-              View all ({stats?.total_exams ?? 3})
+              View all ({stats?.total_exams ?? 0})
             </Link>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {recentExams.map((exam) => (
+            {recentExams.length === 0 ? (
               <div
-                key={exam.id}
                 className="glass-panel"
                 style={{
-                  padding: '1.5rem',
+                  padding: '2.5rem 1.5rem',
+                  textAlign: 'center',
                   borderRadius: 'var(--radius-lg)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
+                  border: '1px dashed var(--border-subtle)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    <span className="badge badge-teal">{exam.academic_year?.name || 'Year 1'}</span>
-                    <span className="badge badge-blue">{exam.module?.name || 'Cardiovascular'}</span>
-                  </div>
-                  <span className="badge badge-purple">
-                    {exam.exam_type === 'end_module' ? 'END MODULE' : 'FINAL'}
-                  </span>
+                <FileCheck2 size={40} color="var(--text-dim)" style={{ margin: '0 auto 0.75rem' }} />
+                <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '0.35rem' }}>
+                  لا توجد امتحانات مضافة حالياً
                 </div>
-
-                <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.4 }}>
-                  {exam.title}
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '380px', margin: '0 auto 1.25rem', lineHeight: 1.5 }}>
+                  الموقع خالي وجاهز تماماً. أول امتحان ستضيفه من لوحة الإدارة سيظهر هنا للطلاب فوراً.
                 </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {exam.question_count || 5} Questions • 60 Mins
-                  </span>
-
-                  <Link
-                    href={`/practice/complete_exam/${exam.id}`}
-                    className="btn btn-primary btn-sm"
-                    style={{ gap: '0.35rem' }}
-                  >
-                    <span>Solve Exam</span>
-                    <Play size={13} fill="#ffffff" />
-                  </Link>
-                </div>
+                <Link href="/admin" className="btn btn-primary btn-sm">
+                  الانتقال للوحة الإدارة لإضافة امتحان
+                </Link>
               </div>
-            ))}
+            ) : (
+              recentExams.map((exam) => (
+                <div
+                  key={exam.id}
+                  className="glass-panel"
+                  style={{
+                    padding: '1.5rem',
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span className="badge badge-teal">{exam.academic_year?.name || 'Academic Year'}</span>
+                      <span className="badge badge-blue">{exam.module?.name || 'Module'}</span>
+                    </div>
+                    <span className="badge badge-purple">
+                      {exam.exam_type === 'end_module' ? 'END MODULE' : 'FINAL'}
+                    </span>
+                  </div>
+
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.4 }}>
+                    {exam.title}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {exam.question_count ?? 0} Questions • 60 Mins
+                    </span>
+
+                    <Link
+                      href={`/practice/complete_exam/${exam.id}`}
+                      className="btn btn-primary btn-sm"
+                      style={{ gap: '0.35rem' }}
+                    >
+                      <span>Solve Exam</span>
+                      <Play size={13} fill="#ffffff" />
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Recent Attempt History */}

@@ -1267,11 +1267,11 @@ D) Normal myocardium with subtle wavy fibers only
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 onClick={async () => {
-                  if (!confirm('Warning: This will reset the database to default realistic medical curriculum seed data. Continue?')) return;
+                  if (!confirm('تحذير: سيتم مسح وتفريغ كافة الامتحانات والأسئلة والمناهج والنتائج لتصبح قاعدة البيانات خالية تماماً (Clean Slate) مع الاحتفاظ بحسابات الأدمن. هل تريد المتابعة؟')) return;
                   const res = await fetch('/api/admin/reset', { method: 'POST' });
                   const d = await res.json();
                   if (d.success) {
-                    showFeedback('success', 'Database reset to default seed data successfully');
+                    showFeedback('success', 'تم تفريغ قاعدة البيانات بنجاح وأصبحت خالية تماماً');
                     refreshAllData();
                   }
                 }}
@@ -1279,7 +1279,7 @@ D) Normal myocardium with subtle wavy fibers only
                 style={{ gap: '0.4rem' }}
               >
                 <RotateCcw size={15} />
-                <span>Reset to Default High-Yield Seed Curriculum</span>
+                <span>مسح وتفريغ قاعدة البيانات بالكامل (Clean Slate Wipe)</span>
               </button>
             </div>
           </div>

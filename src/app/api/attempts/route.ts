@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStudentAttempts, getAttempt, recordAttempt } from '@/lib/db';
+import { getStudentAttempts, getAttempt, recordAttempt, resetStudentProgress } from '@/lib/db';
 
 export async function GET(req: Request) {
   try {
@@ -35,3 +35,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const student_id = searchParams.get('student_id') || 'default_student';
+
+    const result = await resetStudentProgress(student_id);
+    return NextResponse.json(result);
+  } catch (error) {
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  }
+}
+

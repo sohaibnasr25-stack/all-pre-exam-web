@@ -319,10 +319,32 @@ export default function StudyHierarchyPage() {
         </div>
       )}
 
-      {/* Step 2: Two-Column Hierarchy Layout (Chapters & Concepts on left, Practice Launcher & Questions on right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-        {/* Left Column: Chapters and Concepts Tree */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Step 2: Empty State or Two-Column Hierarchy Layout */}
+      {!loading && subjects.length === 0 ? (
+        <div
+          className="glass-panel"
+          style={{
+            padding: '4rem 2rem',
+            textAlign: 'center',
+            borderRadius: 'var(--radius-xl)',
+            border: '1px dashed var(--border-subtle)',
+          }}
+        >
+          <BookOpen size={46} color="var(--text-dim)" style={{ margin: '0 auto 1rem' }} />
+          <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            لا توجد مواد دراسية مضافة حالياً
+          </h3>
+          <p style={{ color: 'var(--text-muted)', maxWidth: '440px', margin: '0 auto 1.5rem', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            الموقع خالي وجاهز بالكامل. يمكنك استيراد أو إنشاء المواد والامتحانات مباشرة عبر لوحة الإدارة.
+          </p>
+          <Link href="/admin" className="btn btn-primary">
+            الانتقال للوحة الإدارة
+          </Link>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+          {/* Left Column: Chapters and Concepts Tree */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Active Subject Card */}
           {activeSubject && (
             <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
@@ -594,6 +616,7 @@ export default function StudyHierarchyPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

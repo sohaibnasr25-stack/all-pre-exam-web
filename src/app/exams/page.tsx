@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
+  RotateCcw,
 } from 'lucide-react';
 import { Exam, AcademicYear, Module } from '@/lib/types';
 
@@ -22,31 +23,63 @@ export default function CompleteExamsPage() {
   const [selectedModuleId, setSelectedModuleId] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const [examsRes, yearsRes, modulesRes] = await Promise.all([
+        fetch('/api/exams'),
+        fetch('/api/academic-years'),
+        fetch('/api/modules'),
+      ]);
+
+      const examsData = await examsRes.json();
+      const yearsData = await yearsRes.json();
+      const modulesData = await modulesRes.json();
+
+      if (examsData.success) setExams(examsData.data);
+      if (yearsData.success) setAcademicYears(yearsData.data);
+      if (modulesData.success) setModules(modulesData.data);
+    } catch (err) {
+      console.error('Error loading complete exams:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [examsRes, yearsRes, modulesRes] = await Promise.all([
-          fetch('/api/exams'),
-          fetch('/api/academic-years'),
-          fetch('/api/modules'),
-        ]);
-
-        const examsData = await examsRes.json();
-        const yearsData = await yearsRes.json();
-        const modulesData = await modulesRes.json();
-
-        if (examsData.success) setExams(examsData.data);
-        if (yearsData.success) setAcademicYears(yearsData.data);
-        if (modulesData.success) setModules(modulesData.data);
-      } catch (err) {
-        console.error('Error loading complete exams:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
   }, []);
+
+  const handleResetProgress = async () => {
+    const confirmed = window.confirm(
+      'هل أنت متأكد من مسح كافة نتائجك ومحاولاتك السابقة في الامتحانات؟\nسيتم تصفير جميع درجاتك السابقة لتبدأ من جديد.'
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      const res = await fetch('/api/attempts?student_id=default_student', { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        try {
+          Object.keys(localStorage).forEach((k) => {
+            if (k.startsWith('omnimed_active_')) {
+              localStorage.removeItem(k);
+            }
+          });
+        } catch {}
+        alert('تم مسح كافة النتائج والحلول السابقة بنجاح.');
+        await loadData();
+      } else {
+        alert(data.message || 'حدث خطأ أثناء مسح النتائج');
+      }
+    } catch {
+      alert('تعذر الاتصال بالخادم لمسح النتائج');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   // Filter modules based on selected Academic Year
   const visibleModules = selectedYearId === 'all'
@@ -67,18 +100,40 @@ export default function CompleteExamsPage() {
   return (
     <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
       {/* Header */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38bdf8', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-          <FileCheck2 size={16} />
-          <span>Previous-Year Board Examinations</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38bdf8', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+            <FileCheck2 size={16} />
+            <span>Previous-Year Board Examinations</span>
+          </div>
+          <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            Complete Exams Portal
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '750px', lineHeight: 1.6 }}>
+            Solve complete authentic exams structured strictly by <strong>Academic Year → Module → Exam</strong>.
+            Every exam runs in simulated testing conditions with full performance analytics upon submission.
+          </p>
         </div>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-          Complete Exams Portal
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '750px', lineHeight: 1.6 }}>
-          Solve complete authentic exams structured strictly by <strong>Academic Year → Module → Exam</strong>.
-          Every exam runs in simulated testing conditions with full performance analytics upon submission.
-        </p>
+
+        <button
+          type="button"
+          onClick={handleResetProgress}
+          disabled={resetting}
+          className="btn btn-outline btn-sm"
+          style={{
+            color: '#fb7185',
+            borderColor: 'rgba(244, 63, 94, 0.4)',
+            background: 'rgba(244, 63, 94, 0.08)',
+            gap: '0.45rem',
+            padding: '0.55rem 0.95rem',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 600,
+          }}
+          title="مسح وتصفير كافة نتائج وحلول الطالب السابقة للامتحانات"
+        >
+          <RotateCcw size={14} className={resetting ? 'animate-spin' : ''} />
+          <span>{resetting ? 'جاري المسح...' : 'مسح كافة النتائج والحلول (Reset)'}</span>
+        </button>
       </div>
 
       {/* Hierarchy Filter Bar */}
@@ -271,7 +326,7 @@ export default function CompleteExamsPage() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <FileCheck2 size={15} color="#06b6d4" />
-                    <span>{exam.question_count ?? 5} Questions</span>
+                    <span>{exam.question_count ?? 0} Questions</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <Clock size={15} color="#f59e0b" />
@@ -295,7 +350,7 @@ export default function CompleteExamsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <CheckCircle2 size={16} color="#10b981" />
                     <span style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 600 }}>
-                      Score: {exam.previous_score ?? 80}%
+                      Score: {exam.previous_score ?? 0}%
                     </span>
                   </div>
                 ) : (
@@ -318,6 +373,30 @@ export default function CompleteExamsPage() {
           );
         })}
       </div>
+
+      {/* Empty State when no exams exist */}
+      {!loading && filteredExams.length === 0 && (
+        <div
+          className="glass-panel"
+          style={{
+            padding: '4rem 2rem',
+            textAlign: 'center',
+            borderRadius: 'var(--radius-xl)',
+            border: '1px dashed var(--border-subtle)',
+          }}
+        >
+          <FileCheck2 size={46} color="var(--text-dim)" style={{ margin: '0 auto 1rem' }} />
+          <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            لا توجد امتحانات مضافة حالياً
+          </h3>
+          <p style={{ color: 'var(--text-muted)', maxWidth: '440px', margin: '0 auto 1.5rem', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            الموقع خالي وجاهز بالكامل. يمكنك رفع أول امتحان عبر لوحة الإدارة من خلال استيراد ملف نصي أو إضافته يدوياً.
+          </p>
+          <Link href="/admin" className="btn btn-primary">
+            الانتقال للوحة الإدارة لإضافة امتحانات
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
