@@ -1,5 +1,5 @@
 import { AcademicYear, Module, Subject, Chapter, Concept, Exam, Question, AnswerChoice, ExplanationItem } from './types';
-import { readLocalStore, writeLocalStore, DatabaseStore } from './db';
+import { readLocalStore, writeLocalStore, syncLocalStoreToSupabase, DatabaseStore } from './db';
 import {
   ParsedChoice,
   ParsedQuestion,
@@ -235,6 +235,9 @@ export async function executeBulkImport(payload: ParsedExamPayload): Promise<{
     });
 
     writeLocalStore(store);
+    syncLocalStoreToSupabase(store).catch((err) => {
+      console.warn('[BulkImport] Background Supabase sync error:', err);
+    });
 
     return {
       success: true,
@@ -247,6 +250,9 @@ export async function executeBulkImport(payload: ParsedExamPayload): Promise<{
 
   const res = importSingleExamIntoStore(payload, store, timestamp);
   writeLocalStore(store);
+  syncLocalStoreToSupabase(store).catch((err) => {
+    console.warn('[BulkImport] Background Supabase sync error:', err);
+  });
 
   return {
     success: true,

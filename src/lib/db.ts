@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   AcademicYear,
@@ -66,9 +67,33 @@ export async function safeSupabaseCall<T>(call: () => Promise<T>, timeoutMs = 25
   }
 }
 
-// Local file storage fallback path
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+// In-memory store cache for serverless environments (prevents EROFS read-only crashes on Vercel)
+let inMemoryStore: DatabaseStore | null = null;
+
+function getDbStoragePaths() {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.LAMBDA_TASK_ROOT
+  );
+  const localDataDir = path.join(process.cwd(), 'data');
+  const tmpDataDir = path.join(os.tmpdir(), 'omnimed_data');
+  const activeDataDir = isServerless ? tmpDataDir : localDataDir;
+  const activeDbFile = path.join(activeDataDir, 'db.json');
+  const bundledDbFile = path.join(localDataDir, 'db.json');
+  return { isServerless, activeDataDir, activeDbFile, bundledDbFile };
+}
+
+function ensureDbDir(dirPath: string): boolean {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
 
 export interface DatabaseStore {
   academic_years: AcademicYear[];
@@ -107,34 +132,71 @@ function generateSeedData(): DatabaseStore {
   };
 }
 
-// Ensure database file exists on disk
+// Serverless-safe store reader
 export function readLocalStore(): DatabaseStore {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (inMemoryStore) {
+    return inMemoryStore;
   }
 
-  if (!fs.existsSync(DB_FILE)) {
-    const seed = generateSeedData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2), 'utf-8');
-    return seed;
-  }
+  const { isServerless, activeDataDir, activeDbFile, bundledDbFile } = getDbStoragePaths();
 
   try {
-    const content = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(content);
-  } catch (err) {
-    console.error('Error reading db.json, re-initializing seed:', err);
+    if (fs.existsSync(/*turbopackIgnore: true*/ activeDbFile)) {
+      const content = fs.readFileSync(/*turbopackIgnore: true*/ activeDbFile, 'utf-8');
+      inMemoryStore = JSON.parse(content);
+      return inMemoryStore!;
+    }
+
+    if (fs.existsSync(/*turbopackIgnore: true*/ bundledDbFile)) {
+      const content = fs.readFileSync(/*turbopackIgnore: true*/ bundledDbFile, 'utf-8');
+      inMemoryStore = JSON.parse(content);
+      if (isServerless && ensureDbDir(activeDataDir)) {
+        try {
+          fs.writeFileSync(activeDbFile, content, 'utf-8');
+        } catch {}
+      }
+      return inMemoryStore!;
+    }
+
     const seed = generateSeedData();
-    fs.writeFileSync(DB_FILE, JSON.stringify(seed, null, 2), 'utf-8');
+    inMemoryStore = seed;
+    if (ensureDbDir(activeDataDir)) {
+      try {
+        fs.writeFileSync(activeDbFile, JSON.stringify(seed, null, 2), 'utf-8');
+      } catch {}
+    }
     return seed;
+  } catch (err) {
+    console.error('Error reading store, falling back to clean in-memory seed:', err);
+    if (!inMemoryStore) {
+      inMemoryStore = generateSeedData();
+    }
+    return inMemoryStore;
   }
 }
 
+// Serverless-safe store writer (Never crashes with EROFS)
 export function writeLocalStore(store: DatabaseStore): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  // Update in-memory state immediately
+  inMemoryStore = store;
+
+  const { isServerless, activeDataDir, activeDbFile } = getDbStoragePaths();
+  try {
+    if (ensureDbDir(activeDataDir)) {
+      fs.writeFileSync(activeDbFile, JSON.stringify(store, null, 2), 'utf-8');
+    }
+  } catch (err) {
+    // If writing to active path failed (e.g. read-only container), try /tmp fallback
+    if (!isServerless) {
+      try {
+        const tmpDir = path.join(os.tmpdir(), 'omnimed_data');
+        if (ensureDbDir(tmpDir)) {
+          fs.writeFileSync(path.join(tmpDir, 'db.json'), JSON.stringify(store, null, 2), 'utf-8');
+        }
+      } catch {}
+    }
+    console.warn('[Storage] Read-only serverless filesystem: persisted store in-memory without error:', (err as Error).message);
   }
-  fs.writeFileSync(DB_FILE, JSON.stringify(store, null, 2), 'utf-8');
 }
 
 // ==========================================
@@ -543,6 +605,25 @@ export async function createExam(data: Omit<Exam, 'id'> & { question_ids?: strin
   }
 
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { academic_year: _y, module: _m, questions: _q, question_count: _qc, ...examRow } = newExam as any;
+      await supabase.from('exams').upsert([examRow], { onConflict: 'id' });
+      if (data.question_ids && data.question_ids.length > 0) {
+        const eqRows = data.question_ids.map((qid, idx) => ({
+          id: `eq-${Date.now()}-${idx}`,
+          exam_id: newExam.id,
+          question_id: qid,
+          order_index: idx + 1,
+        }));
+        await supabase.from('exam_questions').upsert(eqRows, { onConflict: 'id' });
+      }
+    } catch (e) {
+      console.warn('Error syncing exam to Supabase:', e);
+    }
+  }
+
   return newExam;
 }
 
@@ -570,6 +651,16 @@ export async function updateExam(
   }
 
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { question_ids: _, ...examUpdates } = updates;
+      await supabase.from('exams').update(examUpdates).eq('id', id);
+    } catch (e) {
+      console.warn('Error updating exam in Supabase:', e);
+    }
+  }
+
   return store.exams[index];
 }
 
@@ -578,6 +669,15 @@ export async function deleteExam(id: string): Promise<boolean> {
   store.exams = store.exams.filter((e) => e.id !== id);
   store.exam_questions = store.exam_questions.filter((eq) => eq.exam_id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      await supabase.from('exams').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Error deleting exam from Supabase:', e);
+    }
+  }
+
   return true;
 }
 
@@ -732,6 +832,41 @@ export async function createQuestion(payload: {
 
   writeLocalStore(store);
 
+  if (supabase) {
+    try {
+      const {
+        answer_choices: _c,
+        explanations: _e,
+        exam_ids: _ei,
+        exams: _ex,
+        academic_year: _ay,
+        module: _m,
+        subject: _s,
+        chapter: _ch,
+        concept: _co,
+        ...questionRow
+      } = newQuestion as any;
+      await supabase.from('questions').upsert([questionRow], { onConflict: 'id' });
+      if (insertedChoices.length > 0) {
+        await supabase.from('answer_choices').upsert(insertedChoices, { onConflict: 'id' });
+      }
+      if (insertedExpls.length > 0) {
+        await supabase.from('explanations').upsert(insertedExpls, { onConflict: 'id' });
+      }
+      if (safeExamIds.length > 0) {
+        const eqRows = safeExamIds.map((eid, idx) => ({
+          id: `eq-${Date.now()}-${idx}`,
+          exam_id: eid,
+          question_id: newQId,
+          order_index: idx + 1,
+        }));
+        await supabase.from('exam_questions').upsert(eqRows, { onConflict: 'id' });
+      }
+    } catch (e) {
+      console.warn('Error syncing new question to Supabase:', e);
+    }
+  }
+
   return {
     ...newQuestion,
     answer_choices: insertedChoices,
@@ -804,6 +939,56 @@ export async function updateQuestion(
   }
 
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      if (payload.question) {
+        await supabase.from('questions').update(payload.question).eq('id', id);
+      }
+      if (Array.isArray(payload.answer_choices)) {
+        await supabase.from('answer_choices').delete().eq('question_id', id);
+        const choicesToInsert = payload.answer_choices.map((c, idx) => ({
+          id: c.id || `c-${id}-${idx}`,
+          question_id: id,
+          choice_letter: c.choice_letter,
+          choice_text: c.choice_text,
+          is_correct: c.is_correct,
+          order_index: c.order_index || idx + 1,
+        }));
+        await supabase.from('answer_choices').insert(choicesToInsert);
+      }
+      if (Array.isArray(payload.explanations)) {
+        await supabase.from('explanations').delete().eq('question_id', id);
+        const explsToInsert = payload.explanations.map((e, idx) => ({
+          id: e.id || `exp-${id}-${idx}`,
+          question_id: id,
+          choice_id: e.choice_id || null,
+          choice_letter: e.choice_letter,
+          explanation_text: e.explanation_text,
+          is_why_correct: e.is_why_correct,
+          is_why_incorrect: e.is_why_incorrect,
+          source_document: e.source_document,
+          source_page: e.source_page,
+          source_reference: e.source_reference,
+          created_at: new Date().toISOString(),
+        }));
+        await supabase.from('explanations').insert(explsToInsert);
+      }
+      if (Array.isArray(payload.exam_ids)) {
+        await supabase.from('exam_questions').delete().eq('question_id', id);
+        const eqToInsert = payload.exam_ids.map((eid, idx) => ({
+          id: `eq-${Date.now()}-${idx}`,
+          exam_id: eid,
+          question_id: id,
+          order_index: idx + 1,
+        }));
+        await supabase.from('exam_questions').insert(eqToInsert);
+      }
+    } catch (e) {
+      console.warn('Error syncing updated question to Supabase:', e);
+    }
+  }
+
   return getQuestion(id);
 }
 
@@ -815,7 +1000,74 @@ export async function deleteQuestion(id: string): Promise<boolean> {
   store.exam_questions = store.exam_questions.filter((eq) => eq.question_id !== id);
   store.bookmarks = store.bookmarks.filter((b) => b.question_id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      await supabase.from('questions').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Error deleting question from Supabase:', e);
+    }
+  }
+
   return true;
+}
+
+/**
+ * Sync entire local store to Supabase (upsert merge)
+ */
+export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<void> {
+  if (!supabase) return;
+  try {
+    if (store.academic_years.length > 0) {
+      await supabase.from('academic_years').upsert(store.academic_years, { onConflict: 'id' });
+    }
+    if (store.modules.length > 0) {
+      const cleanModules = store.modules.map(({ academic_year: _, ...rest }: any) => rest);
+      await supabase.from('modules').upsert(cleanModules, { onConflict: 'id' });
+    }
+    if (store.subjects.length > 0) {
+      const cleanSubjects = store.subjects.map(({ module: _, ...rest }: any) => rest);
+      await supabase.from('subjects').upsert(cleanSubjects, { onConflict: 'id' });
+    }
+    if (store.chapters.length > 0) {
+      const cleanChapters = store.chapters.map(({ subject: _, ...rest }: any) => rest);
+      await supabase.from('chapters').upsert(cleanChapters, { onConflict: 'id' });
+    }
+    if (store.concepts.length > 0) {
+      const cleanConcepts = store.concepts.map(({ chapter: _, ...rest }: any) => rest);
+      await supabase.from('concepts').upsert(cleanConcepts, { onConflict: 'id' });
+    }
+    if (store.exams.length > 0) {
+      const cleanExams = store.exams.map(({ academic_year: _ay, module: _m, questions: _q, question_count: _qc, ...rest }: any) => rest);
+      await supabase.from('exams').upsert(cleanExams, { onConflict: 'id' });
+    }
+    if (store.questions.length > 0) {
+      const cleanQuestions = store.questions.map(({
+        answer_choices: _c,
+        explanations: _e,
+        exam_ids: _ei,
+        exams: _ex,
+        academic_year: _ay,
+        module: _m,
+        subject: _s,
+        chapter: _ch,
+        concept: _co,
+        ...rest
+      }: any) => rest);
+      await supabase.from('questions').upsert(cleanQuestions, { onConflict: 'id' });
+    }
+    if (store.answer_choices.length > 0) {
+      await supabase.from('answer_choices').upsert(store.answer_choices, { onConflict: 'id' });
+    }
+    if (store.explanations.length > 0) {
+      await supabase.from('explanations').upsert(store.explanations, { onConflict: 'id' });
+    }
+    if (store.exam_questions.length > 0) {
+      await supabase.from('exam_questions').upsert(store.exam_questions, { onConflict: 'id' });
+    }
+  } catch (err) {
+    console.warn('[Supabase Sync Engine] Background sync warning:', err);
+  }
 }
 
 // ---------------- Bookmarks -----------------
