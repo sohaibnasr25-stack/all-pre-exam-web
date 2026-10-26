@@ -98,6 +98,7 @@ export default function Navbar() {
               display: 'flex',
               alignItems: 'center',
               gap: '0.35rem',
+              marginLeft: '1.5rem',
             }}
             className="desktop-nav"
           >

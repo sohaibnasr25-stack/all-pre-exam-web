@@ -286,7 +286,7 @@ export default function StudentDashboard() {
         }}
       >
         {/* Exams Completed */}
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Exams Completed</span>
             <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4' }}>
@@ -302,7 +302,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Questions Solved */}
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Questions Answered</span>
             <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
@@ -318,7 +318,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Overall Accuracy */}
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Overall Accuracy</span>
             <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
@@ -334,7 +334,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Question Bank Bookmarks */}
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Question Bank</span>
             <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc' }}>
@@ -363,7 +363,7 @@ export default function StudentDashboard() {
             {/* Complete Exams Portal */}
             <Link
               href="/exams"
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -403,7 +403,7 @@ export default function StudentDashboard() {
             {/* Subject Hierarchy Practice */}
             <Link
               href="/study"
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -443,7 +443,7 @@ export default function StudentDashboard() {
             {/* Repeated Concepts Section */}
             <Link
               href="/repeated-concepts"
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -483,7 +483,7 @@ export default function StudentDashboard() {
             {/* Weakness Analysis Portal */}
             <Link
               href="/weakness-analysis"
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -559,7 +559,7 @@ export default function StudentDashboard() {
               recentExams.map((exam) => (
                 <div
                   key={exam.id}
-                  className="glass-panel"
+                  className="card-3d"
                   style={{
                     padding: '1.5rem',
                     borderRadius: 'var(--radius-lg)',

@@ -1118,8 +1118,14 @@ function PracticeInner({ params }: PracticePageProps) {
           }
 
           :global(.practice-main-container) {
-            padding: 0.5rem 0.5rem 5.5rem !important;
+            padding: 0 0 5.5rem !important;
             max-width: 100% !important;
+          }
+
+          /* practice-question-area fills remaining height minus top & bottom bars */
+          .practice-question-area {
+            /* Let question card scroll naturally — no fixed height, just natural flow */
+            padding: 0 0.5rem;
           }
 
           /* Sticky Sleek Mobile Top Bar */

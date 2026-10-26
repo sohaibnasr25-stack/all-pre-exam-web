@@ -787,18 +787,29 @@ export default function QuestionCard({
       <style jsx>{`
         @media (max-width: 768px) {
           :global(.question-card-container) {
-            padding: 1.15rem 0.9rem !important;
+            padding: 0.85rem 0.75rem !important;
             border-radius: var(--radius-md) !important;
           }
           :global(.question-card-inner-header) {
-            gap: 0.6rem !important;
-            margin-bottom: 1rem !important;
-            padding-bottom: 0.75rem !important;
+            gap: 0.5rem !important;
+            margin-bottom: 0.75rem !important;
+            padding-bottom: 0.6rem !important;
           }
           :global(.question-stem-text) {
-            font-size: 1.05rem !important;
-            line-height: 1.6 !important;
-            margin-bottom: 1.25rem !important;
+            font-size: 0.98rem !important;
+            line-height: 1.5 !important;
+            margin-bottom: 0.9rem !important;
+          }
+        }
+
+        /* Extra compact for very small screens (iPhone SE etc.) */
+        @media (max-width: 390px) {
+          :global(.question-card-container) {
+            padding: 0.75rem 0.6rem !important;
+          }
+          :global(.question-stem-text) {
+            font-size: 0.92rem !important;
+            margin-bottom: 0.75rem !important;
           }
         }
       `}</style>
