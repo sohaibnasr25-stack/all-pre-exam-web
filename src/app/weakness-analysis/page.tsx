@@ -62,7 +62,7 @@ export default function WeaknessAnalysisPage() {
         </p>
       </div>
 
-      {/* Summary KPI Cards */}
+      {/* Summary KPI Cards with 3D Floating Effect */}
       <div
         style={{
           display: 'grid',
@@ -71,7 +71,7 @@ export default function WeaknessAnalysisPage() {
           marginBottom: '2.5rem',
         }}
       >
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', borderColor: 'rgba(244, 63, 94, 0.35)' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
             Flagged Weak Concepts (&lt;70%)
           </div>
@@ -83,7 +83,7 @@ export default function WeaknessAnalysisPage() {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', borderColor: 'rgba(6, 182, 212, 0.35)' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
             Concepts Tested
           </div>
@@ -95,7 +95,7 @@ export default function WeaknessAnalysisPage() {
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', borderColor: 'rgba(16, 185, 129, 0.35)' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
             Curriculum Coverage
           </div>
@@ -108,24 +108,18 @@ export default function WeaknessAnalysisPage() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+      {/* Filter Tabs with 3D Floating Effect */}
+      <div style={{ display: 'flex', gap: '0.85rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button
           onClick={() => setSelectedFilter('all')}
-          className={`btn btn-sm ${selectedFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`pill-3d pill-3d-cyan ${selectedFilter === 'all' ? 'active' : ''}`}
         >
-          All Concepts ({metrics.length})
+          <span>All Concepts ({metrics.length})</span>
         </button>
 
         <button
           onClick={() => setSelectedFilter('weak')}
-          className="btn btn-sm"
-          style={{
-            background: selectedFilter === 'weak' ? 'rgba(244, 63, 94, 0.25)' : 'var(--bg-surface-elevated)',
-            border: `1px solid ${selectedFilter === 'weak' ? '#f43f5e' : 'var(--border-subtle)'}`,
-            color: selectedFilter === 'weak' ? '#fb7185' : 'var(--text-muted)',
-            gap: '0.4rem',
-          }}
+          className={`pill-3d pill-3d-rose ${selectedFilter === 'weak' ? 'active' : ''}`}
         >
           <AlertTriangle size={14} color="#f43f5e" />
           <span>Weak Concepts Needing Review ({weakCount})</span>
@@ -133,14 +127,9 @@ export default function WeaknessAnalysisPage() {
 
         <button
           onClick={() => setSelectedFilter('attempted')}
-          className="btn btn-sm"
-          style={{
-            background: selectedFilter === 'attempted' ? 'rgba(6, 182, 212, 0.25)' : 'var(--bg-surface-elevated)',
-            border: `1px solid ${selectedFilter === 'attempted' ? '#06b6d4' : 'var(--border-subtle)'}`,
-            color: selectedFilter === 'attempted' ? '#38bdf8' : 'var(--text-muted)',
-          }}
+          className={`pill-3d pill-3d-blue ${selectedFilter === 'attempted' ? 'active' : ''}`}
         >
-          Attempted Concepts ({attemptedCount})
+          <span>Attempted Concepts ({attemptedCount})</span>
         </button>
       </div>
 
@@ -150,14 +139,14 @@ export default function WeaknessAnalysisPage() {
         </div>
       )}
 
-      {/* Breakdown Table / Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Breakdown Table / Cards with 3D Floating Effect */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {filteredMetrics.map((item) => {
           const hasAttempts = item.total_attempts > 0;
           return (
             <div
               key={item.concept_id}
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -166,8 +155,7 @@ export default function WeaknessAnalysisPage() {
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
                 gap: '1.25rem',
-                border: item.is_weak ? '1.5px solid rgba(244, 63, 94, 0.4)' : '1px solid var(--border-subtle)',
-                background: item.is_weak ? 'rgba(244, 63, 94, 0.04)' : 'var(--bg-surface)',
+                borderColor: item.is_weak ? 'rgba(244, 63, 94, 0.45)' : undefined,
               }}
             >
               {/* Hierarchy Path & Concept Title */}

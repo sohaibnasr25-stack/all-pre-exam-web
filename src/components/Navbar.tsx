@@ -92,12 +92,12 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Nav Items */}
+          {/* Desktop Nav Items with 3D Floating Effect */}
           <nav
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.35rem',
+              gap: '0.45rem',
               marginLeft: '1.5rem',
             }}
             className="desktop-nav"
@@ -109,19 +109,7 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    padding: '0.45rem 0.85rem',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.88rem',
-                    fontWeight: 500,
-                    color: isActive ? 'var(--cyan)' : 'var(--text-muted)',
-                    background: isActive ? 'rgba(6, 182, 212, 0.1)' : 'transparent',
-                    border: isActive ? '1px solid rgba(6, 182, 212, 0.2)' : '1px solid transparent',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`nav-item-3d ${isActive ? 'active' : ''}`}
                 >
                   <Icon size={16} />
                   <span>{item.label}</span>
@@ -175,15 +163,10 @@ export default function Navbar() {
             {/* Admin Portal Link */}
             <Link
               href="/admin"
-              className="btn btn-secondary btn-sm"
+              className={`nav-item-3d ${pathname.startsWith('/admin') ? 'active' : ''}`}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                fontSize: '0.82rem',
-                border: pathname.startsWith('/admin') ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-subtle)',
-                background: pathname.startsWith('/admin') ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-surface-elevated)',
-                color: pathname.startsWith('/admin') ? '#ef4444' : 'var(--text-main)',
+                borderColor: pathname.startsWith('/admin') ? 'rgba(239, 68, 68, 0.6)' : undefined,
+                color: pathname.startsWith('/admin') ? '#fb7185' : undefined,
               }}
               title="Admin & Content Management Portal"
             >
@@ -209,16 +192,16 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile Dropdown Menu with 3D Floating Options */}
         {mobileMenuOpen && (
           <div
             style={{
-              padding: '1rem 1.5rem 1.5rem',
+              padding: '1rem 1.25rem 1.25rem',
               background: 'var(--bg-surface)',
               borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.5rem',
+              gap: '0.65rem',
             }}
           >
             {navLinks.map((item) => {
@@ -229,16 +212,12 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
+                  className={`nav-item-3d ${isActive ? 'active' : ''}`}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    color: isActive ? 'var(--cyan)' : 'var(--text-main)',
-                    background: isActive ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    padding: '0.75rem 1.15rem',
                     fontSize: '0.95rem',
-                    fontWeight: 500,
                   }}
                 >
                   <Icon size={18} />

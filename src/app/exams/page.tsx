@@ -136,9 +136,9 @@ export default function CompleteExamsPage() {
         </button>
       </div>
 
-      {/* Hierarchy Filter Bar */}
+      {/* Hierarchy Filter Bar with 3D Floating Effect */}
       <div
-        className="glass-panel"
+        className="card-3d"
         style={{
           padding: '1.25rem 1.5rem',
           borderRadius: 'var(--radius-lg)',
@@ -256,7 +256,7 @@ export default function CompleteExamsPage() {
           return (
             <div
               key={exam.id}
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.75rem',
                 borderRadius: 'var(--radius-xl)',

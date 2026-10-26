@@ -136,7 +136,7 @@ export default function RepeatedConceptsPage() {
 
       {/* Hierarchy Filter Bar: Academic Year -> Module -> Subject */}
       <div
-        className="glass-panel"
+        className="card-3d"
         style={{
           padding: '1.25rem 1.5rem',
           borderRadius: 'var(--radius-lg)',
@@ -268,12 +268,11 @@ export default function RepeatedConceptsPage() {
           return (
             <div
               key={item.concept_id}
-              className="glass-panel"
+              className="card-3d"
               style={{
                 borderRadius: 'var(--radius-xl)',
                 overflow: 'hidden',
-                border: isHighFrequency ? '1.5px solid rgba(168, 85, 247, 0.4)' : '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface)',
+                borderColor: isHighFrequency ? 'rgba(168, 85, 247, 0.45)' : undefined,
               }}
             >
               {/* Summary Card Header */}

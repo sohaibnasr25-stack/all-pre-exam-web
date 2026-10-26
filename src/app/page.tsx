@@ -400,7 +400,7 @@ export default function StudentDashboard() {
               <ArrowRight size={18} color="var(--text-dim)" />
             </Link>
 
-            {/* Subject Hierarchy Practice */}
+            {/* Study by Subject Hierarchy Practice */}
             <Link
               href="/study"
               className="card-3d"
@@ -410,6 +410,7 @@ export default function StudentDashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                borderColor: 'rgba(13, 148, 136, 0.35)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -418,22 +419,23 @@ export default function StudentDashboard() {
                     width: '46px',
                     height: '46px',
                     borderRadius: '12px',
-                    background: 'rgba(13, 148, 136, 0.15)',
-                    border: '1px solid rgba(13, 148, 136, 0.25)',
+                    background: 'rgba(13, 148, 136, 0.2)',
+                    border: '1px solid rgba(13, 148, 136, 0.4)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#2dd4bf',
+                    boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)',
                   }}
                 >
                   <BookOpen size={22} />
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>
-                    Subject, Chapter & Concept Practice
+                    Study by Subject (Chapters & Concepts)
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Drill questions by topic independent of exams
+                    Drill questions by medical subject independent of exams
                   </div>
                 </div>
               </div>

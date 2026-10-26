@@ -565,7 +565,7 @@ D) Normal myocardium with subtle wavy fibers only
     return (
       <div className="container-narrow" style={{ padding: '5rem 1.5rem' }}>
         <div
-          className="glass-panel"
+          className="card-3d"
           style={{
             padding: '3rem 2.5rem',
             borderRadius: 'var(--radius-xl)',
@@ -730,19 +730,7 @@ D) Normal myocardium with subtle wavy fibers only
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                padding: '0.55rem 0.95rem',
-                borderRadius: 'var(--radius-sm)',
-                fontWeight: 600,
-                fontSize: '0.88rem',
-                whiteSpace: 'nowrap',
-                color: isActive ? '#38bdf8' : 'var(--text-muted)',
-                background: isActive ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
-                border: isActive ? '1px solid rgba(6, 182, 212, 0.25)' : '1px solid transparent',
-              }}
+              className={`tab-3d ${isActive ? 'active' : ''}`}
             >
               <Icon size={15} />
               <span>{tab.label}</span>
@@ -810,7 +798,7 @@ D) Normal myocardium with subtle wavy fibers only
               .map((q, idx) => (
               <div
                 key={q.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{
                   padding: '1.25rem 1.5rem',
                   borderRadius: 'var(--radius-md)',
@@ -895,7 +883,7 @@ D) Normal myocardium with subtle wavy fibers only
             {exams.map((exam) => (
               <div
                 key={exam.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{
                   padding: '1.25rem 1.5rem',
                   borderRadius: 'var(--radius-md)',
@@ -976,7 +964,7 @@ D) Normal myocardium with subtle wavy fibers only
             {academicYears.map((year) => (
               <div
                 key={year.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <div>
@@ -1038,7 +1026,7 @@ D) Normal myocardium with subtle wavy fibers only
             {modules.map((mod) => (
               <div
                 key={mod.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <div>
@@ -1102,7 +1090,7 @@ D) Normal myocardium with subtle wavy fibers only
             {subjects.map((sub) => (
               <div
                 key={sub.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <div>
@@ -1165,7 +1153,7 @@ D) Normal myocardium with subtle wavy fibers only
             {chapters.map((chap) => (
               <div
                 key={chap.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <div>
@@ -1228,7 +1216,7 @@ D) Normal myocardium with subtle wavy fibers only
             {concepts.map((con) => (
               <div
                 key={con.id}
-                className="glass-panel"
+                className="card-3d"
                 style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <div>
@@ -1267,7 +1255,7 @@ D) Normal myocardium with subtle wavy fibers only
       {/* TAB 8: SYSTEM & DATABASE */}
       {activeTab === 'system' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div className="glass-panel" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
+          <div className="card-3d" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>
               Database Engine & Offline Resilience
             </h2>
@@ -1462,7 +1450,7 @@ D) Normal myocardium with subtle wavy fibers only
 
           {/* File Upload Zone & Quick Action Buttons */}
           <div
-            className="glass-panel"
+            className="card-3d"
             style={{
               padding: '1.75rem',
               borderRadius: 'var(--radius-lg)',

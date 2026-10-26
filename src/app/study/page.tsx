@@ -160,7 +160,7 @@ export default function StudyHierarchyPage() {
 
       {/* Hierarchy Filter Bar: Academic Year & Module */}
       <div
-        className="glass-panel"
+        className="card-3d"
         style={{
           padding: '1.25rem 1.5rem',
           borderRadius: 'var(--radius-lg)',
@@ -256,20 +256,10 @@ export default function StudyHierarchyPage() {
                   setSelectedChapterId('');
                   setSelectedConceptId('');
                 }}
+                className={`pill-3d pill-3d-teal ${isSelected ? 'active' : ''}`}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
                   gap: '0.65rem',
-                  padding: '0.75rem 1.25rem',
-                  borderRadius: 'var(--radius-lg)',
-                  background: isSelected ? 'linear-gradient(135deg, rgba(13, 148, 136, 0.25), rgba(6, 182, 212, 0.25))' : 'var(--bg-surface)',
-                  border: isSelected ? '1.5px solid var(--border-focus)' : '1px solid var(--border-subtle)',
-                  color: isSelected ? 'var(--text-main)' : 'var(--text-muted)',
-                  fontWeight: 600,
                   fontSize: '0.95rem',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease',
-                  cursor: 'pointer',
                 }}
               >
                 <BookOpen size={16} color={isSelected ? 'var(--cyan)' : 'var(--text-dim)'} />
@@ -347,7 +337,7 @@ export default function StudyHierarchyPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Active Subject Card */}
           {activeSubject && (
-            <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+            <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <span className="badge badge-teal">{activeSubject.code}</span>
                 <Link
@@ -371,7 +361,7 @@ export default function StudyHierarchyPage() {
           )}
 
           {/* Chapters List */}
-          <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+          <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '1rem' }}>
               Chapters in this Subject ({currentChapters.length})
             </div>
@@ -429,7 +419,7 @@ export default function StudyHierarchyPage() {
 
           {/* Concepts List for Current Chapter */}
           {selectedChapterId && (
-            <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+            <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Sparkles size={14} color="#a855f7" />
                 <span>Target Concepts ({currentConcepts.length})</span>
@@ -554,7 +544,7 @@ export default function StudyHierarchyPage() {
               visibleQuestions.map((q, idx) => (
                 <div
                   key={q.id}
-                  className="glass-panel glass-panel-hover"
+                  className="card-3d"
                   style={{
                     padding: '1.5rem',
                     borderRadius: 'var(--radius-lg)',

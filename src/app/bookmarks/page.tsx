@@ -127,31 +127,25 @@ export default function QuestionBankPage() {
         )}
       </div>
 
-      {/* Category Filter Pills */}
+      {/* Category Filter Pills with 3D Floating Effect */}
       <div
         style={{
           display: 'flex',
-          gap: '0.75rem',
+          gap: '0.85rem',
           flexWrap: 'wrap',
           marginBottom: '2rem',
         }}
       >
         <button
           onClick={() => setSelectedCategory('all')}
-          className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`pill-3d pill-3d-cyan ${selectedCategory === 'all' ? 'active' : ''}`}
         >
-          All Saved ({bookmarks.length})
+          <span>All Saved ({bookmarks.length})</span>
         </button>
 
         <button
           onClick={() => setSelectedCategory('important')}
-          className="btn btn-sm"
-          style={{
-            background: selectedCategory === 'important' ? 'rgba(245, 158, 11, 0.25)' : 'var(--bg-surface-elevated)',
-            border: `1px solid ${selectedCategory === 'important' ? '#f59e0b' : 'var(--border-subtle)'}`,
-            color: selectedCategory === 'important' ? '#fbbf24' : 'var(--text-muted)',
-            gap: '0.4rem',
-          }}
+          className={`pill-3d pill-3d-amber ${selectedCategory === 'important' ? 'active' : ''}`}
         >
           <Star size={14} fill="#f59e0b" color="#f59e0b" />
           <span>⭐ Important ({importantCount})</span>
@@ -159,13 +153,7 @@ export default function QuestionBankPage() {
 
         <button
           onClick={() => setSelectedCategory('review_later')}
-          className="btn btn-sm"
-          style={{
-            background: selectedCategory === 'review_later' ? 'rgba(14, 165, 233, 0.25)' : 'var(--bg-surface-elevated)',
-            border: `1px solid ${selectedCategory === 'review_later' ? '#0284c7' : 'var(--border-subtle)'}`,
-            color: selectedCategory === 'review_later' ? '#38bdf8' : 'var(--text-muted)',
-            gap: '0.4rem',
-          }}
+          className={`pill-3d pill-3d-blue ${selectedCategory === 'review_later' ? 'active' : ''}`}
         >
           <Flag size={14} fill="#0284c7" color="#0284c7" />
           <span>🚩 Review Later ({reviewCount})</span>
@@ -173,13 +161,7 @@ export default function QuestionBankPage() {
 
         <button
           onClick={() => setSelectedCategory('not_understood')}
-          className="btn btn-sm"
-          style={{
-            background: selectedCategory === 'not_understood' ? 'rgba(244, 63, 94, 0.25)' : 'var(--bg-surface-elevated)',
-            border: `1px solid ${selectedCategory === 'not_understood' ? '#f43f5e' : 'var(--border-subtle)'}`,
-            color: selectedCategory === 'not_understood' ? '#fb7185' : 'var(--text-muted)',
-            gap: '0.4rem',
-          }}
+          className={`pill-3d pill-3d-rose ${selectedCategory === 'not_understood' ? 'active' : ''}`}
         >
           <HelpCircle size={14} color="#f43f5e" />
           <span>❓ Not Understood ({notUnderstoodCount})</span>
@@ -195,7 +177,7 @@ export default function QuestionBankPage() {
       {/* Empty State */}
       {!loading && filteredBookmarks.length === 0 && (
         <div
-          className="glass-panel"
+          className="card-3d"
           style={{
             padding: '4rem 2rem',
             textAlign: 'center',
@@ -215,8 +197,8 @@ export default function QuestionBankPage() {
         </div>
       )}
 
-      {/* Bookmarked Questions List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Bookmarked Questions List with 3D Floating Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {filteredBookmarks.map((item, idx) => {
           const q = item.question;
           if (!q) return null;
@@ -224,7 +206,7 @@ export default function QuestionBankPage() {
           return (
             <div
               key={item.id}
-              className="glass-panel glass-panel-hover"
+              className="card-3d"
               style={{
                 padding: '1.75rem',
                 borderRadius: 'var(--radius-xl)',
