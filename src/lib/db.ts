@@ -534,6 +534,24 @@ export async function deleteConcept(id: string): Promise<boolean> {
 
 // ---------------- Exams -----------------
 export async function getExams(filters?: { academic_year_id?: string; module_id?: string }): Promise<Exam[]> {
+  if (supabase) {
+    try {
+      let query = supabase.from('exams').select('*, academic_year:academic_years(*), module:modules(*), exam_questions(id, question_id)');
+      if (filters?.academic_year_id) query = query.eq('academic_year_id', filters.academic_year_id);
+      if (filters?.module_id) query = query.eq('module_id', filters.module_id);
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        return data.map((e: any) => ({
+          ...e,
+          question_count: Array.isArray(e.exam_questions) ? e.exam_questions.length : 0,
+          completion_status: 'not_started',
+        }));
+      }
+    } catch (err) {
+      console.warn('Error fetching exams from Supabase:', err);
+    }
+  }
+
   const store = readLocalStore();
   let list = store.exams;
 
@@ -562,6 +580,24 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
 }
 
 export async function getExam(id: string): Promise<Exam | null> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('exams')
+        .select('*, academic_year:academic_years(*), module:modules(*), exam_questions(id, question_id)')
+        .eq('id', id)
+        .single();
+      if (!error && data) {
+        return {
+          ...data,
+          question_count: Array.isArray(data.exam_questions) ? data.exam_questions.length : 0,
+        };
+      }
+    } catch (err) {
+      console.warn('Error fetching exam from Supabase:', err);
+    }
+  }
+
   const store = readLocalStore();
   const exam = store.exams.find((e) => e.id === id);
   if (!exam) return null;
@@ -691,6 +727,51 @@ export async function getQuestions(filters?: {
   exam_id?: string;
   difficulty?: string;
 }): Promise<Question[]> {
+  if (supabase) {
+    try {
+      let query = supabase.from('questions').select(`
+        *,
+        answer_choices(*),
+        explanations(*),
+        exam_questions(id, exam_id),
+        academic_year:academic_years(*),
+        module:modules(*),
+        subject:subjects(*),
+        chapter:chapters(*),
+        concept:concepts(*)
+      `);
+
+      if (filters?.academic_year_id) query = query.eq('academic_year_id', filters.academic_year_id);
+      if (filters?.module_id) query = query.eq('module_id', filters.module_id);
+      if (filters?.subject_id) query = query.eq('subject_id', filters.subject_id);
+      if (filters?.chapter_id) query = query.eq('chapter_id', filters.chapter_id);
+      if (filters?.concept_id) query = query.eq('concept_id', filters.concept_id);
+      if (filters?.difficulty) query = query.eq('difficulty', filters.difficulty);
+
+      const { data, error } = await query.order('order_index', { ascending: true });
+      if (!error && data && data.length > 0) {
+        let list: Question[] = data.map((q: any) => {
+          const choices = (q.answer_choices || []).sort((a: any, b: any) => a.order_index - b.order_index);
+          const linkedExamIds = (q.exam_questions || []).map((eq: any) => eq.exam_id);
+          return {
+            ...q,
+            answer_choices: choices,
+            explanations: q.explanations || [],
+            exam_ids: linkedExamIds,
+          };
+        });
+
+        if (filters?.exam_id) {
+          list = list.filter((q) => q.exam_ids && q.exam_ids.includes(filters.exam_id!));
+        }
+
+        return list;
+      }
+    } catch (err) {
+      console.warn('Error fetching questions from Supabase:', err);
+    }
+  }
+
   const store = readLocalStore();
   let list = store.questions;
 
@@ -743,6 +824,39 @@ export async function getQuestions(filters?: {
 }
 
 export async function getQuestion(id: string): Promise<Question | null> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          answer_choices(*),
+          explanations(*),
+          exam_questions(id, exam_id),
+          academic_year:academic_years(*),
+          module:modules(*),
+          subject:subjects(*),
+          chapter:chapters(*),
+          concept:concepts(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (!error && data) {
+        const choices = (data.answer_choices || []).sort((a: any, b: any) => a.order_index - b.order_index);
+        const linkedExamIds = (data.exam_questions || []).map((eq: any) => eq.exam_id);
+        return {
+          ...data,
+          answer_choices: choices,
+          explanations: data.explanations || [],
+          exam_ids: linkedExamIds,
+        };
+      }
+    } catch (err) {
+      console.warn('Error fetching question from Supabase:', err);
+    }
+  }
+
   const store = readLocalStore();
   const q = store.questions.find((item) => item.id === id);
   if (!q) return null;
@@ -1013,36 +1127,72 @@ export async function deleteQuestion(id: string): Promise<boolean> {
 }
 
 /**
- * Sync entire local store to Supabase (upsert merge)
+ * Sync entire local store to Supabase (upsert merge in strict hierarchical order)
  */
 export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<void> {
   if (!supabase) return;
   try {
+    // 1. Sync academic years
     if (store.academic_years.length > 0) {
-      await supabase.from('academic_years').upsert(store.academic_years, { onConflict: 'id' });
+      const cleanYears = store.academic_years.map(({ ...rest }: any) => rest);
+      const { error: yErr } = await supabase.from('academic_years').upsert(cleanYears, { onConflict: 'id' });
+      if (yErr) console.error('[Supabase Sync] academic_years error:', yErr);
     }
-    if (store.modules.length > 0) {
-      const cleanModules = store.modules.map(({ academic_year: _, ...rest }: any) => rest);
-      await supabase.from('modules').upsert(cleanModules, { onConflict: 'id' });
+    const validYearIds = new Set(store.academic_years.map((y) => y.id));
+
+    // 2. Sync modules (only valid foreign keys)
+    const validModules = store.modules.filter((m) => validYearIds.has(m.academic_year_id));
+    if (validModules.length > 0) {
+      const cleanModules = validModules.map(({ academic_year: _, ...rest }: any) => rest);
+      const { error: mErr } = await supabase.from('modules').upsert(cleanModules, { onConflict: 'id' });
+      if (mErr) console.error('[Supabase Sync] modules error:', mErr);
     }
-    if (store.subjects.length > 0) {
-      const cleanSubjects = store.subjects.map(({ module: _, ...rest }: any) => rest);
-      await supabase.from('subjects').upsert(cleanSubjects, { onConflict: 'id' });
+    const validModIds = new Set(validModules.map((m) => m.id));
+
+    // 3. Sync subjects (only valid module_id)
+    const validSubjects = store.subjects.filter((s) => validModIds.has(s.module_id));
+    if (validSubjects.length > 0) {
+      const cleanSubjects = validSubjects.map(({ module: _, ...rest }: any) => rest);
+      const { error: sErr } = await supabase.from('subjects').upsert(cleanSubjects, { onConflict: 'id' });
+      if (sErr) console.error('[Supabase Sync] subjects error:', sErr);
     }
-    if (store.chapters.length > 0) {
-      const cleanChapters = store.chapters.map(({ subject: _, ...rest }: any) => rest);
-      await supabase.from('chapters').upsert(cleanChapters, { onConflict: 'id' });
+    const validSubIds = new Set(validSubjects.map((s) => s.id));
+
+    // 4. Sync chapters (only valid subject_id)
+    const validChapters = store.chapters.filter((c) => validSubIds.has(c.subject_id));
+    if (validChapters.length > 0) {
+      const cleanChapters = validChapters.map(({ subject: _, ...rest }: any) => rest);
+      const { error: chErr } = await supabase.from('chapters').upsert(cleanChapters, { onConflict: 'id' });
+      if (chErr) console.error('[Supabase Sync] chapters error:', chErr);
     }
-    if (store.concepts.length > 0) {
-      const cleanConcepts = store.concepts.map(({ chapter: _, ...rest }: any) => rest);
-      await supabase.from('concepts').upsert(cleanConcepts, { onConflict: 'id' });
+    const validChapIds = new Set(validChapters.map((c) => c.id));
+
+    // 5. Sync concepts (only valid chapter_id)
+    const validConcepts = store.concepts.filter((co) => validChapIds.has(co.chapter_id));
+    if (validConcepts.length > 0) {
+      const cleanConcepts = validConcepts.map(({ chapter: _, ...rest }: any) => rest);
+      const { error: coErr } = await supabase.from('concepts').upsert(cleanConcepts, { onConflict: 'id' });
+      if (coErr) console.error('[Supabase Sync] concepts error:', coErr);
     }
-    if (store.exams.length > 0) {
-      const cleanExams = store.exams.map(({ academic_year: _ay, module: _m, questions: _q, question_count: _qc, ...rest }: any) => rest);
-      await supabase.from('exams').upsert(cleanExams, { onConflict: 'id' });
+
+    // 6. Sync exams (only valid year & module)
+    const validExams = store.exams.filter((e) => validYearIds.has(e.academic_year_id) && validModIds.has(e.module_id));
+    if (validExams.length > 0) {
+      const cleanExams = validExams.map(({ academic_year: _ay, module: _m, questions: _q, question_count: _qc, completion_status: _cs, previous_score: _ps, ...rest }: any) => rest);
+      const { error: exErr } = await supabase.from('exams').upsert(cleanExams, { onConflict: 'id' });
+      if (exErr) console.error('[Supabase Sync] exams error:', exErr);
     }
-    if (store.questions.length > 0) {
-      const cleanQuestions = store.questions.map(({
+    const validExamIds = new Set(validExams.map((e) => e.id));
+
+    // 7. Sync questions (only valid hierarchy links)
+    const validQuestions = store.questions.filter((q) =>
+      validYearIds.has(q.academic_year_id) &&
+      validModIds.has(q.module_id) &&
+      (!q.subject_id || validSubIds.has(q.subject_id)) &&
+      (!q.chapter_id || validChapIds.has(q.chapter_id))
+    );
+    if (validQuestions.length > 0) {
+      const cleanQuestions = validQuestions.map(({
         answer_choices: _c,
         explanations: _e,
         exam_ids: _ei,
@@ -1054,19 +1204,33 @@ export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<vo
         concept: _co,
         ...rest
       }: any) => rest);
-      await supabase.from('questions').upsert(cleanQuestions, { onConflict: 'id' });
+      const { error: qErr } = await supabase.from('questions').upsert(cleanQuestions, { onConflict: 'id' });
+      if (qErr) console.error('[Supabase Sync] questions error:', qErr);
     }
-    if (store.answer_choices.length > 0) {
-      await supabase.from('answer_choices').upsert(store.answer_choices, { onConflict: 'id' });
+    const validQIds = new Set(validQuestions.map((q) => q.id));
+
+    // 8. Sync answer choices (only for valid questions)
+    const validChoices = store.answer_choices.filter((c) => validQIds.has(c.question_id));
+    if (validChoices.length > 0) {
+      const { error: aErr } = await supabase.from('answer_choices').upsert(validChoices, { onConflict: 'id' });
+      if (aErr) console.error('[Supabase Sync] answer_choices error:', aErr);
     }
-    if (store.explanations.length > 0) {
-      await supabase.from('explanations').upsert(store.explanations, { onConflict: 'id' });
+
+    // 9. Sync explanations (only for valid questions)
+    const validExpls = store.explanations.filter((e) => validQIds.has(e.question_id));
+    if (validExpls.length > 0) {
+      const { error: expErr } = await supabase.from('explanations').upsert(validExpls, { onConflict: 'id' });
+      if (expErr) console.error('[Supabase Sync] explanations error:', expErr);
     }
-    if (store.exam_questions.length > 0) {
-      await supabase.from('exam_questions').upsert(store.exam_questions, { onConflict: 'id' });
+
+    // 10. Sync exam questions (only for valid exams & questions)
+    const validExamQs = store.exam_questions.filter((eq) => validExamIds.has(eq.exam_id) && validQIds.has(eq.question_id));
+    if (validExamQs.length > 0) {
+      const { error: eqErr } = await supabase.from('exam_questions').upsert(validExamQs, { onConflict: 'id' });
+      if (eqErr) console.error('[Supabase Sync] exam_questions error:', eqErr);
     }
   } catch (err) {
-    console.warn('[Supabase Sync Engine] Background sync warning:', err);
+    console.error('[Supabase Sync Engine] Fatal sync error:', err);
   }
 }
 
@@ -1574,39 +1738,30 @@ export async function syncCloudToLocal(): Promise<{
     let newExamsCount = 0;
     let newQuestionsCount = 0;
 
-    function mergeById<T extends { id: string }>(localArr: T[], cloudArr: T[] | null | undefined): { merged: T[]; addedCount: number } {
+    function mergeAuthoritativeCloud<T extends { id: string }>(localArr: T[], cloudArr: T[] | null | undefined): { merged: T[]; addedCount: number } {
       if (!cloudArr || cloudArr.length === 0) return { merged: localArr, addedCount: 0 };
-      const map = new Map<string, T>();
-      localArr.forEach((item) => map.set(item.id, item));
-      let added = 0;
-      cloudArr.forEach((item) => {
-        if (!map.has(item.id)) added += 1;
-        map.set(item.id, { ...map.get(item.id), ...item });
-      });
-      return { merged: Array.from(map.values()), addedCount: added };
+      return { merged: cloudArr, addedCount: cloudArr.length };
     }
 
-    if (yearsRes?.data) store.academic_years = mergeById(store.academic_years, yearsRes.data).merged;
-    if (modulesRes?.data) store.modules = mergeById(store.modules, modulesRes.data).merged;
-    if (subjectsRes?.data) store.subjects = mergeById(store.subjects, subjectsRes.data).merged;
-    if (chaptersRes?.data) store.chapters = mergeById(store.chapters, chaptersRes.data).merged;
-    if (conceptsRes?.data) store.concepts = mergeById(store.concepts, conceptsRes.data).merged;
+    if (yearsRes?.data && yearsRes.data.length > 0) store.academic_years = yearsRes.data;
+    if (modulesRes?.data && modulesRes.data.length > 0) store.modules = modulesRes.data;
+    if (subjectsRes?.data && subjectsRes.data.length > 0) store.subjects = subjectsRes.data;
+    if (chaptersRes?.data && chaptersRes.data.length > 0) store.chapters = chaptersRes.data;
+    if (conceptsRes?.data && conceptsRes.data.length > 0) store.concepts = conceptsRes.data;
 
-    if (examsRes?.data) {
-      const { merged, addedCount } = mergeById(store.exams, examsRes.data);
-      store.exams = merged;
-      newExamsCount = addedCount;
+    if (examsRes?.data && examsRes.data.length > 0) {
+      store.exams = examsRes.data;
+      newExamsCount = examsRes.data.length;
     }
 
-    if (questionsRes?.data) {
-      const { merged, addedCount } = mergeById(store.questions, questionsRes.data);
-      store.questions = merged;
-      newQuestionsCount = addedCount;
+    if (questionsRes?.data && questionsRes.data.length > 0) {
+      store.questions = questionsRes.data;
+      newQuestionsCount = questionsRes.data.length;
     }
 
-    if (choicesRes?.data) store.answer_choices = mergeById(store.answer_choices, choicesRes.data).merged;
-    if (explanationsRes?.data) store.explanations = mergeById(store.explanations, explanationsRes.data).merged;
-    if (examQuestionsRes?.data) store.exam_questions = mergeById(store.exam_questions, examQuestionsRes.data).merged;
+    if (choicesRes?.data && choicesRes.data.length > 0) store.answer_choices = choicesRes.data;
+    if (explanationsRes?.data && explanationsRes.data.length > 0) store.explanations = explanationsRes.data;
+    if (examQuestionsRes?.data && examQuestionsRes.data.length > 0) store.exam_questions = examQuestionsRes.data;
 
     // Persist to local disk
     writeLocalStore(store);

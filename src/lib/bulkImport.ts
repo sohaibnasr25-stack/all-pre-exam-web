@@ -1,5 +1,5 @@
 import { AcademicYear, Module, Subject, Chapter, Concept, Exam, Question, AnswerChoice, ExplanationItem } from './types';
-import { readLocalStore, writeLocalStore, syncLocalStoreToSupabase, DatabaseStore } from './db';
+import { readLocalStore, writeLocalStore, syncLocalStoreToSupabase, syncCloudToLocal, DatabaseStore } from './db';
 import {
   ParsedChoice,
   ParsedQuestion,
@@ -16,16 +16,20 @@ function importSingleExamIntoStore(
   timestamp: number
 ): { examId: string; examTitle: string; count: number } {
   // 1. Resolve or Create Academic Year
+  const safeYearName = (payload.academic_year_name || '').trim();
   let yearObj = store.academic_years.find(
     (y: AcademicYear) =>
-      payload.academic_year_name &&
-      y.name.toLowerCase().includes(payload.academic_year_name.toLowerCase())
+      safeYearName &&
+      (y.name.trim().toLowerCase() === safeYearName.toLowerCase() ||
+       y.name.toLowerCase().includes(safeYearName.toLowerCase()) ||
+       safeYearName.toLowerCase().includes(y.name.toLowerCase()))
   );
-  if (!yearObj && payload.academic_year_name) {
+  if (!yearObj && safeYearName) {
+    const uniqueYearCode = `Y-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     yearObj = {
       id: `year-${timestamp}`,
-      name: payload.academic_year_name,
-      code: `Y-${store.academic_years.length + 1}`,
+      name: safeYearName,
+      code: uniqueYearCode,
       description: `Academic year created via bulk import`,
       order_index: store.academic_years.length + 1,
       is_active: true,
@@ -34,28 +38,33 @@ function importSingleExamIntoStore(
     store.academic_years.push(yearObj);
   } else if (!yearObj) {
     yearObj = store.academic_years[0] || {
-      id: `year-default`,
+      id: `year-${timestamp}`,
       name: 'General Medical Year',
-      code: 'MED-GEN',
+      code: `MED-GEN-${timestamp}`,
       order_index: 1,
       is_active: true,
       created_at: new Date().toISOString(),
     };
-    if (!store.academic_years.length) store.academic_years.push(yearObj);
+    if (!store.academic_years.some((y) => y.id === yearObj!.id)) store.academic_years.push(yearObj);
   }
 
   // 2. Resolve or Create Module
+  const safeModuleName = (payload.module_name || '').trim();
   let moduleObj: Module | undefined = store.modules.find(
     (m: Module) =>
-      payload.module_name &&
-      m.name.toLowerCase().includes(payload.module_name.toLowerCase())
+      m.academic_year_id === yearObj.id &&
+      safeModuleName &&
+      (m.name.trim().toLowerCase() === safeModuleName.toLowerCase() ||
+       m.name.toLowerCase().includes(safeModuleName.toLowerCase()) ||
+       safeModuleName.toLowerCase().includes(m.name.toLowerCase()))
   );
-  if (!moduleObj && payload.module_name) {
+  if (!moduleObj && safeModuleName) {
+    const uniqueModCode = `MOD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     moduleObj = {
       id: `mod-${timestamp}`,
       academic_year_id: yearObj.id,
-      name: payload.module_name,
-      code: `MOD-${store.modules.length + 1}`,
+      name: safeModuleName,
+      code: uniqueModCode,
       description: `Module created via bulk import`,
       order_index: store.modules.length + 1,
       created_at: new Date().toISOString(),
@@ -63,10 +72,10 @@ function importSingleExamIntoStore(
     store.modules.push(moduleObj);
   } else if (!moduleObj) {
     moduleObj = store.modules.find((m: Module) => m.academic_year_id === yearObj.id) || store.modules[0] || {
-      id: `mod-default`,
+      id: `mod-${timestamp}`,
       academic_year_id: yearObj.id,
       name: 'Integrated Systems',
-      code: 'MOD-INT',
+      code: `MOD-${timestamp}`,
       order_index: 1,
       created_at: new Date().toISOString(),
     };
@@ -75,21 +84,30 @@ function importSingleExamIntoStore(
 
   const finalModuleObj: Module = moduleObj;
 
-  // 3. Create the Exam
-  const examId = `exam-${timestamp}`;
-  const newExam: Exam = {
-    id: examId,
-    academic_year_id: yearObj.id,
-    module_id: finalModuleObj.id,
-    title: payload.exam_title || `Medical Examination ${new Date().toLocaleDateString()}`,
-    exam_type: payload.exam_type === 'end_module' ? 'end_module' : 'final',
-    duration_minutes: payload.duration_minutes || 60,
-    passing_score: payload.passing_score || 70,
-    instructions: payload.instructions || 'Answer all questions to the best of your ability.',
-    is_published: true,
-    created_at: new Date().toISOString(),
-  };
-  store.exams.push(newExam);
+  // 3. Resolve or Create the Exam
+  const targetExamTitle = (payload.exam_title || `Medical Examination ${new Date().toLocaleDateString()}`).trim();
+  let existingExam = store.exams.find(
+    (e: Exam) =>
+      e.module_id === finalModuleObj.id &&
+      e.title.trim().toLowerCase() === targetExamTitle.toLowerCase()
+  );
+  const examId = existingExam ? existingExam.id : `exam-${timestamp}`;
+  if (!existingExam) {
+    existingExam = {
+      id: examId,
+      academic_year_id: yearObj.id,
+      module_id: finalModuleObj.id,
+      title: targetExamTitle,
+      exam_type: payload.exam_type === 'end_module' ? 'end_module' : 'final',
+      duration_minutes: payload.duration_minutes || 60,
+      passing_score: payload.passing_score || 70,
+      instructions: payload.instructions || 'Answer all questions to the best of your ability.',
+      is_published: true,
+      created_at: new Date().toISOString(),
+    };
+    store.exams.push(existingExam);
+  }
+  const examTitle = existingExam.title;
 
   // 4. Process and insert each question
   const safeQuestions = Array.isArray(payload.questions) ? payload.questions : [];
@@ -98,14 +116,20 @@ function importSingleExamIntoStore(
     const newQId = `q-${qTimestamp}`;
 
     // Resolve or create Subject
-    const targetSubName = q.subject_name || payload.default_subject_name || 'Medical Sciences';
-    let subjectObj = store.subjects.find((s: Subject) => s.name.toLowerCase() === targetSubName.toLowerCase());
+    const targetSubName = (q.subject_name || payload.default_subject_name || 'Medical Sciences').trim();
+    let subjectObj = store.subjects.find(
+      (s: Subject) =>
+        s.module_id === finalModuleObj.id &&
+        (s.name.trim().toLowerCase() === targetSubName.toLowerCase() ||
+         s.name.toLowerCase().includes(targetSubName.toLowerCase()) ||
+         targetSubName.toLowerCase().includes(s.name.toLowerCase()))
+    );
     if (!subjectObj) {
       subjectObj = {
         id: `sub-${qTimestamp}`,
         module_id: finalModuleObj.id,
         name: targetSubName,
-        code: `SUB-${store.subjects.length + 1}`,
+        code: `SUB-${Date.now()}-${store.subjects.length + 1}`,
         description: `Subject created via bulk import`,
         order_index: store.subjects.length + 1,
         created_at: new Date().toISOString(),
@@ -114,9 +138,13 @@ function importSingleExamIntoStore(
     }
 
     // Resolve or create Chapter
-    const targetChapName = q.chapter_name || payload.default_chapter_name || 'Core Curriculum Chapter';
+    const targetChapName = (q.chapter_name || payload.default_chapter_name || 'Core Curriculum Chapter').trim();
     let chapterObj = store.chapters.find(
-      (c: Chapter) => c.subject_id === subjectObj.id && c.name.toLowerCase() === targetChapName.toLowerCase()
+      (c: Chapter) =>
+        c.subject_id === subjectObj.id &&
+        (c.name.trim().toLowerCase() === targetChapName.toLowerCase() ||
+         c.name.toLowerCase().includes(targetChapName.toLowerCase()) ||
+         targetChapName.toLowerCase().includes(c.name.toLowerCase()))
     );
     if (!chapterObj) {
       chapterObj = {
@@ -131,9 +159,13 @@ function importSingleExamIntoStore(
     }
 
     // Resolve or create Concept
-    const targetConcName = q.concept_name || payload.default_concept_name || 'High-Yield Clinical Concept';
+    const targetConcName = (q.concept_name || payload.default_concept_name || 'High-Yield Clinical Concept').trim();
     let conceptObj = store.concepts.find(
-      (c: Concept) => c.chapter_id === chapterObj.id && c.name.toLowerCase() === targetConcName.toLowerCase()
+      (c: Concept) =>
+        c.chapter_id === chapterObj.id &&
+        (c.name.trim().toLowerCase() === targetConcName.toLowerCase() ||
+         c.name.toLowerCase().includes(targetConcName.toLowerCase()) ||
+         targetConcName.toLowerCase().includes(c.name.toLowerCase()))
     );
     if (!conceptObj) {
       conceptObj = {
@@ -164,13 +196,15 @@ function importSingleExamIntoStore(
     };
     store.questions.push(questionObj);
 
-    // Link Question to Exam
-    store.exam_questions.push({
-      id: `eq-${qTimestamp}`,
-      exam_id: examId,
-      question_id: newQId,
-      order_index: idx + 1,
-    });
+    // Link Question to Exam (avoid duplicate links)
+    if (!store.exam_questions.some((eq) => eq.exam_id === examId && eq.question_id === newQId)) {
+      store.exam_questions.push({
+        id: `eq-${qTimestamp}`,
+        exam_id: examId,
+        question_id: newQId,
+        order_index: idx + 1,
+      });
+    }
 
     // Insert Answer Choices and Explanations
     const safeChoices = Array.isArray(q.choices) ? q.choices : [];
@@ -205,7 +239,7 @@ function importSingleExamIntoStore(
     });
   });
 
-  return { examId, examTitle: newExam.title, count: safeQuestions.length };
+  return { examId, examTitle, count: safeQuestions.length };
 }
 
 /**
@@ -219,6 +253,13 @@ export async function executeBulkImport(payload: ParsedExamPayload): Promise<{
   questions_count: number;
   imported_exams_count?: number;
 }> {
+  // 1. Sync latest cloud state first so IDs match existing Supabase entities
+  try {
+    await syncCloudToLocal();
+  } catch (err) {
+    console.warn('[BulkImport] Cloud sync warning, using local state:', err);
+  }
+
   const store = readLocalStore();
   const timestamp = Date.now();
 
@@ -235,9 +276,11 @@ export async function executeBulkImport(payload: ParsedExamPayload): Promise<{
     });
 
     writeLocalStore(store);
-    syncLocalStoreToSupabase(store).catch((err) => {
-      console.warn('[BulkImport] Background Supabase sync error:', err);
-    });
+    try {
+      await syncLocalStoreToSupabase(store);
+    } catch (err) {
+      console.error('[BulkImport] Error syncing to Supabase:', err);
+    }
 
     return {
       success: true,
@@ -250,9 +293,11 @@ export async function executeBulkImport(payload: ParsedExamPayload): Promise<{
 
   const res = importSingleExamIntoStore(payload, store, timestamp);
   writeLocalStore(store);
-  syncLocalStoreToSupabase(store).catch((err) => {
-    console.warn('[BulkImport] Background Supabase sync error:', err);
-  });
+  try {
+    await syncLocalStoreToSupabase(store);
+  } catch (err) {
+    console.error('[BulkImport] Error syncing to Supabase:', err);
+  }
 
   return {
     success: true,
