@@ -5,7 +5,9 @@ import { isAuthorizedAdmin } from '@/lib/adminAuth';
 export async function GET() {
   try {
     const years = await getAcademicYears();
-    return NextResponse.json({ success: true, data: years });
+    return NextResponse.json({ success: true, data: years }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }

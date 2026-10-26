@@ -7,7 +7,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const chapterId = searchParams.get('chapter_id') || undefined;
     const concepts = await getConcepts(chapterId);
-    return NextResponse.json({ success: true, data: concepts });
+    return NextResponse.json({ success: true, data: concepts }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }

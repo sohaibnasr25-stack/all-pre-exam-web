@@ -209,7 +209,7 @@ export async function getAcademicYears(): Promise<AcademicYear[]> {
       .from('academic_years')
       .select('*')
       .order('order_index', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+    if (!error && data) return data;
   }
   const store = readLocalStore();
   return store.academic_years.sort((a, b) => a.order_index - b.order_index);
@@ -257,14 +257,19 @@ export async function updateAcademicYear(id: string, updates: Partial<AcademicYe
 }
 
 export async function deleteAcademicYear(id: string): Promise<boolean> {
-  if (supabase) {
-    const { error } = await supabase.from('academic_years').delete().eq('id', id);
-    if (!error) return true;
-  }
-
   const store = readLocalStore();
   store.academic_years = store.academic_years.filter((y) => y.id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('academic_years').delete().eq('id', id);
+      if (error) console.error('Error deleting academic year from Supabase:', error);
+    } catch (e) {
+      console.warn('Error deleting academic year from Supabase:', e);
+    }
+  }
+
   return true;
 }
 
@@ -274,7 +279,7 @@ export async function getModules(academicYearId?: string): Promise<Module[]> {
     let query = supabase.from('modules').select('*, academic_year:academic_years(*)');
     if (academicYearId) query = query.eq('academic_year_id', academicYearId);
     const { data, error } = await query.order('order_index', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+    if (!error && data) return data;
   }
 
   const store = readLocalStore();
@@ -323,14 +328,19 @@ export async function updateModule(id: string, updates: Partial<Module>): Promis
 }
 
 export async function deleteModule(id: string): Promise<boolean> {
-  if (supabase) {
-    const { error } = await supabase.from('modules').delete().eq('id', id);
-    if (!error) return true;
-  }
-
   const store = readLocalStore();
   store.modules = store.modules.filter((m) => m.id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('modules').delete().eq('id', id);
+      if (error) console.error('Error deleting module from Supabase:', error);
+    } catch (e) {
+      console.warn('Error deleting module from Supabase:', e);
+    }
+  }
+
   return true;
 }
 
@@ -340,7 +350,7 @@ export async function getSubjects(moduleId?: string): Promise<Subject[]> {
     let query = supabase.from('subjects').select('*, module:modules(*)');
     if (moduleId) query = query.eq('module_id', moduleId);
     const { data, error } = await query.order('order_index', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+    if (!error && data) return data;
   }
 
   const store = readLocalStore();
@@ -389,14 +399,19 @@ export async function updateSubject(id: string, updates: Partial<Subject>): Prom
 }
 
 export async function deleteSubject(id: string): Promise<boolean> {
-  if (supabase) {
-    const { error } = await supabase.from('subjects').delete().eq('id', id);
-    if (!error) return true;
-  }
-
   const store = readLocalStore();
   store.subjects = store.subjects.filter((s) => s.id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('subjects').delete().eq('id', id);
+      if (error) console.error('Error deleting subject from Supabase:', error);
+    } catch (e) {
+      console.warn('Error deleting subject from Supabase:', e);
+    }
+  }
+
   return true;
 }
 
@@ -406,7 +421,7 @@ export async function getChapters(subjectId?: string): Promise<Chapter[]> {
     let query = supabase.from('chapters').select('*, subject:subjects(*)');
     if (subjectId) query = query.eq('subject_id', subjectId);
     const { data, error } = await query.order('order_index', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+    if (!error && data) return data;
   }
 
   const store = readLocalStore();
@@ -455,14 +470,19 @@ export async function updateChapter(id: string, updates: Partial<Chapter>): Prom
 }
 
 export async function deleteChapter(id: string): Promise<boolean> {
-  if (supabase) {
-    const { error } = await supabase.from('chapters').delete().eq('id', id);
-    if (!error) return true;
-  }
-
   const store = readLocalStore();
   store.chapters = store.chapters.filter((c) => c.id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('chapters').delete().eq('id', id);
+      if (error) console.error('Error deleting chapter from Supabase:', error);
+    } catch (e) {
+      console.warn('Error deleting chapter from Supabase:', e);
+    }
+  }
+
   return true;
 }
 
@@ -472,7 +492,7 @@ export async function getConcepts(chapterId?: string): Promise<Concept[]> {
     let query = supabase.from('concepts').select('*, chapter:chapters(*)');
     if (chapterId) query = query.eq('chapter_id', chapterId);
     const { data, error } = await query.order('order_index', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+    if (!error && data) return data;
   }
 
   const store = readLocalStore();
@@ -521,14 +541,19 @@ export async function updateConcept(id: string, updates: Partial<Concept>): Prom
 }
 
 export async function deleteConcept(id: string): Promise<boolean> {
-  if (supabase) {
-    const { error } = await supabase.from('concepts').delete().eq('id', id);
-    if (!error) return true;
-  }
-
   const store = readLocalStore();
   store.concepts = store.concepts.filter((c) => c.id !== id);
   writeLocalStore(store);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('concepts').delete().eq('id', id);
+      if (error) console.error('Error deleting concept from Supabase:', error);
+    } catch (e) {
+      console.warn('Error deleting concept from Supabase:', e);
+    }
+  }
+
   return true;
 }
 
@@ -540,7 +565,7 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
       if (filters?.academic_year_id) query = query.eq('academic_year_id', filters.academic_year_id);
       if (filters?.module_id) query = query.eq('module_id', filters.module_id);
       const { data, error } = await query.order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         return data.map((e: any) => ({
           ...e,
           question_count: Array.isArray(e.exam_questions) ? e.exam_questions.length : 0,
@@ -749,7 +774,7 @@ export async function getQuestions(filters?: {
       if (filters?.difficulty) query = query.eq('difficulty', filters.difficulty);
 
       const { data, error } = await query.order('order_index', { ascending: true });
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         let list: Question[] = data.map((q: any) => {
           const choices = (q.answer_choices || []).sort((a: any, b: any) => a.order_index - b.order_index);
           const linkedExamIds = (q.exam_questions || []).map((eq: any) => eq.exam_id);
@@ -1743,25 +1768,25 @@ export async function syncCloudToLocal(): Promise<{
       return { merged: cloudArr, addedCount: cloudArr.length };
     }
 
-    if (yearsRes?.data && yearsRes.data.length > 0) store.academic_years = yearsRes.data;
-    if (modulesRes?.data && modulesRes.data.length > 0) store.modules = modulesRes.data;
-    if (subjectsRes?.data && subjectsRes.data.length > 0) store.subjects = subjectsRes.data;
-    if (chaptersRes?.data && chaptersRes.data.length > 0) store.chapters = chaptersRes.data;
-    if (conceptsRes?.data && conceptsRes.data.length > 0) store.concepts = conceptsRes.data;
+    if (!yearsRes?.error && yearsRes?.data) store.academic_years = yearsRes.data;
+    if (!modulesRes?.error && modulesRes?.data) store.modules = modulesRes.data;
+    if (!subjectsRes?.error && subjectsRes?.data) store.subjects = subjectsRes.data;
+    if (!chaptersRes?.error && chaptersRes?.data) store.chapters = chaptersRes.data;
+    if (!conceptsRes?.error && conceptsRes?.data) store.concepts = conceptsRes.data;
 
-    if (examsRes?.data && examsRes.data.length > 0) {
+    if (!examsRes?.error && examsRes?.data) {
       store.exams = examsRes.data;
       newExamsCount = examsRes.data.length;
     }
 
-    if (questionsRes?.data && questionsRes.data.length > 0) {
+    if (!questionsRes?.error && questionsRes?.data) {
       store.questions = questionsRes.data;
       newQuestionsCount = questionsRes.data.length;
     }
 
-    if (choicesRes?.data && choicesRes.data.length > 0) store.answer_choices = choicesRes.data;
-    if (explanationsRes?.data && explanationsRes.data.length > 0) store.explanations = explanationsRes.data;
-    if (examQuestionsRes?.data && examQuestionsRes.data.length > 0) store.exam_questions = examQuestionsRes.data;
+    if (!choicesRes?.error && choicesRes?.data) store.answer_choices = choicesRes.data;
+    if (!explanationsRes?.error && explanationsRes?.data) store.explanations = explanationsRes.data;
+    if (!examQuestionsRes?.error && examQuestionsRes?.data) store.exam_questions = examQuestionsRes.data;
 
     // Persist to local disk
     writeLocalStore(store);

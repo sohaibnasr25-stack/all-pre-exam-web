@@ -9,13 +9,17 @@ export async function GET(req: Request) {
     if (id) {
       const exam = await getExam(id);
       if (!exam) return NextResponse.json({ success: false, message: 'Exam not found' }, { status: 404 });
-      return NextResponse.json({ success: true, data: exam });
+      return NextResponse.json({ success: true, data: exam }, {
+        headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+      });
     }
 
     const academicYearId = searchParams.get('academic_year_id') || undefined;
     const moduleId = searchParams.get('module_id') || undefined;
     const exams = await getExams({ academic_year_id: academicYearId, module_id: moduleId });
-    return NextResponse.json({ success: true, data: exams });
+    return NextResponse.json({ success: true, data: exams }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }

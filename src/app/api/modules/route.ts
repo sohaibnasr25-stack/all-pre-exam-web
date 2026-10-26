@@ -7,7 +7,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const academicYearId = searchParams.get('academic_year_id') || undefined;
     const modules = await getModules(academicYearId);
-    return NextResponse.json({ success: true, data: modules });
+    return NextResponse.json({ success: true, data: modules }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }

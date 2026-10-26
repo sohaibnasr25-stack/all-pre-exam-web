@@ -9,7 +9,9 @@ export async function GET(req: Request) {
     if (id) {
       const question = await getQuestion(id);
       if (!question) return NextResponse.json({ success: false, message: 'Question not found' }, { status: 404 });
-      return NextResponse.json({ success: true, data: question });
+      return NextResponse.json({ success: true, data: question }, {
+        headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+      });
     }
 
     const exam_id = searchParams.get('exam_id') || undefined;
@@ -30,7 +32,9 @@ export async function GET(req: Request) {
       difficulty,
     });
 
-    return NextResponse.json({ success: true, data: questions });
+    return NextResponse.json({ success: true, data: questions }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
