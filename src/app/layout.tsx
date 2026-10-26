@@ -1,12 +1,22 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import { ThemeProvider } from '@/components/ThemeContext';
 
 export const metadata: Metadata = {
-  title: 'OmniMed — Universal Medical Exams Platform',
+  title: 'OmniMed — Medical Exams Platform',
   description: 'Production-ready platform for organizing, practicing, analyzing, and mastering medical board exams across all academic years, modules, subjects, chapters, and concepts.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#080d1a' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+  ],
 };
 
 export default function RootLayout({

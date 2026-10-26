@@ -113,7 +113,7 @@ export default function QuestionCard({
 
   return (
     <div
-      className="glass-panel animate-question-slide"
+      className="glass-panel animate-question-slide question-card-container"
       style={{
         padding: '2rem',
         borderRadius: 'var(--radius-xl)',
@@ -124,6 +124,7 @@ export default function QuestionCard({
     >
       {/* Question Header: Number, Metadata Badges, Flags & Bookmarks */}
       <div
+        className="question-card-inner-header"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -215,7 +216,8 @@ export default function QuestionCard({
                   right: 0,
                   top: '115%',
                   zIndex: 35,
-                  width: '320px',
+                  width: 'min(320px, calc(100vw - 2rem))',
+                  maxWidth: 'calc(100vw - 2rem)',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-highlight)',
                   borderRadius: 'var(--radius-lg)',
@@ -225,6 +227,7 @@ export default function QuestionCard({
                   flexDirection: 'column',
                   gap: '0.65rem',
                   animation: 'cardFadeIn 0.15s ease-out',
+                  boxSizing: 'border-box',
                 }}
               >
                 {/* Header */}
@@ -436,6 +439,7 @@ export default function QuestionCard({
 
       {/* Main Question Text */}
       <h2
+        className="question-stem-text"
         style={{
           fontSize: '1.18rem',
           fontWeight: 600,
@@ -779,6 +783,25 @@ export default function QuestionCard({
           )}
         </div>
       )}
+
+      <style jsx>{`
+        @media (max-width: 768px) {
+          :global(.question-card-container) {
+            padding: 1.15rem 0.9rem !important;
+            border-radius: var(--radius-md) !important;
+          }
+          :global(.question-card-inner-header) {
+            gap: 0.6rem !important;
+            margin-bottom: 1rem !important;
+            padding-bottom: 0.75rem !important;
+          }
+          :global(.question-stem-text) {
+            font-size: 1.05rem !important;
+            line-height: 1.6 !important;
+            margin-bottom: 1.25rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

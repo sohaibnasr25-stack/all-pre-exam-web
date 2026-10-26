@@ -17,6 +17,7 @@ interface QuestionNavigationProps {
   flags: Record<string, boolean>;
   questionIds: string[];
   durationMinutes?: number;
+  secondsRemaining?: number;
   isExamMode: boolean;
   isSubmitted: boolean;
   onSelectIndex: (index: number) => void;
@@ -32,6 +33,7 @@ export default function QuestionNavigation({
   flags,
   questionIds,
   durationMinutes = 60,
+  secondsRemaining: externalSeconds,
   isExamMode,
   isSubmitted,
   onSelectIndex,
@@ -39,14 +41,15 @@ export default function QuestionNavigation({
   onNext,
   onSubmit,
 }: QuestionNavigationProps) {
-  // Timer state
-  const [secondsRemaining, setSecondsRemaining] = useState(durationMinutes * 60);
+  // Timer state (use external if provided, else internal)
+  const [internalSeconds, setInternalSeconds] = useState(durationMinutes * 60);
+  const secondsRemaining = externalSeconds !== undefined ? externalSeconds : internalSeconds;
 
   useEffect(() => {
-    if (!isExamMode || isSubmitted) return;
+    if (externalSeconds !== undefined || !isExamMode || isSubmitted) return;
 
     const timer = setInterval(() => {
-      setSecondsRemaining((prev) => {
+      setInternalSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
           onSubmit();
@@ -57,7 +60,7 @@ export default function QuestionNavigation({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isExamMode, isSubmitted, onSubmit]);
+  }, [externalSeconds, isExamMode, isSubmitted, onSubmit]);
 
   const formatTimer = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);

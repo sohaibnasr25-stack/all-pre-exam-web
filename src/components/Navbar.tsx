@@ -33,9 +33,12 @@ export default function Navbar() {
     { label: 'Weakness Analysis', href: '/weakness-analysis', icon: TrendingDown },
   ];
 
+  const isPractice = pathname.startsWith('/practice/');
+
   return (
     <>
       <header
+        className={`site-header ${isPractice ? 'in-practice-session' : ''}`}
         style={{
           position: 'sticky',
           top: 0,
@@ -86,21 +89,6 @@ export default function Navbar() {
             </div>
             <span>
               Omni<span style={{ color: 'var(--cyan)' }}>Med</span>
-              <span
-                style={{
-                  fontSize: '0.68rem',
-                  fontWeight: 600,
-                  marginLeft: '0.4rem',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  background: 'rgba(6, 182, 212, 0.15)',
-                  color: 'var(--cyan)',
-                  border: '1px solid rgba(6, 182, 212, 0.25)',
-                  verticalAlign: 'middle',
-                }}
-              >
-                UNIVERSAL
-              </span>
             </span>
           </Link>
 
@@ -276,6 +264,11 @@ export default function Navbar() {
             display: none !important;
           }
           :global(.admin-text) {
+            display: none !important;
+          }
+        }
+        @media (max-width: 768px) {
+          :global(.in-practice-session) {
             display: none !important;
           }
         }

@@ -149,7 +149,7 @@ export default function StudentDashboard() {
             }}
           >
             <GraduationCap size={15} />
-            <span>UNIVERSAL MEDICAL BOARD & CLINICAL CLERKSHIP PLATFORM</span>
+            <span>MEDICAL BOARD & CLINICAL CLERKSHIP PLATFORM</span>
           </div>
 
           <h1 style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1.25, marginBottom: '0.75rem', color: 'var(--text-main)' }}>

@@ -16,6 +16,12 @@ import {
   Zap,
   Trophy,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Send,
+  X,
+  Flag,
 } from 'lucide-react';
 import { Question, BookmarkCategory, StudentAttempt } from '@/lib/types';
 import QuestionCard from '@/components/QuestionCard';
@@ -60,10 +66,12 @@ function PracticeInner({ params }: PracticePageProps) {
 
   // Exam timing & status
   const [durationMinutes, setDurationMinutes] = useState(60);
+  const [secondsRemaining, setSecondsRemaining] = useState(60 * 60);
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [timeSpentSeconds, setTimeSpentSeconds] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [warningModalOpen, setWarningModalOpen] = useState(false);
+  const [paletteDrawerOpen, setPaletteDrawerOpen] = useState(false);
 
   // Load questions for the selected mode and entity id
   useEffect(() => {
@@ -178,6 +186,56 @@ function PracticeInner({ params }: PracticePageProps) {
       } catch {}
     }
   }, [answers, flags, mode, id]);
+
+  // Synchronize timer countdown
+  useEffect(() => {
+    setSecondsRemaining(durationMinutes * 60);
+  }, [durationMinutes]);
+
+  useEffect(() => {
+    if (!sessionStarted || mode !== 'complete_exam' || isSubmitted) return;
+
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleFinalSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [sessionStarted, mode, isSubmitted]);
+
+  const formatTimer = (totalSecs: number) => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleJumpToQuestion = (idx: number) => {
+    setCurrentIndex(idx);
+    setPaletteDrawerOpen(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePrevQuestion = () => {
+    setCurrentIndex((idx) => Math.max(0, idx - 1));
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleNextQuestion = () => {
+    setCurrentIndex((idx) => Math.min(questions.length - 1, idx + 1));
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const currentQ = questions[currentIndex];
   const questionIds = questions.map((q) => q.id);
@@ -395,9 +453,9 @@ function PracticeInner({ params }: PracticePageProps) {
   // Pre-Flight Feedback Mode Selection Screen (اختر نمط التصحيح قبل بدء الامتحان)
   if (!sessionStarted) {
     return (
-      <div className="container" style={{ padding: '3rem 1.5rem 5rem', maxWidth: '780px' }}>
+      <div className="container preflight-container" style={{ padding: '3rem 1.5rem 5rem', maxWidth: '780px' }}>
         <div
-          className="glass-panel animate-fade-in"
+          className="glass-panel animate-fade-in preflight-card"
           style={{
             padding: '2.5rem',
             borderRadius: 'var(--radius-xl)',
@@ -704,6 +762,18 @@ function PracticeInner({ params }: PracticePageProps) {
             </button>
           </div>
         </div>
+
+        <style jsx>{`
+          @media (max-width: 768px) {
+            :global(.preflight-container) {
+              padding: 1rem 0.5rem 3rem !important;
+            }
+            :global(.preflight-card) {
+              padding: 1.25rem 0.85rem !important;
+              border-radius: var(--radius-md) !important;
+            }
+          }
+        `}</style>
       </div>
     );
   }
@@ -712,123 +782,284 @@ function PracticeInner({ params }: PracticePageProps) {
     .map((q, idx) => (!answers[q.id] ? idx : -1))
     .filter((idx) => idx !== -1);
 
+  const answeredCount = questionIds.filter((qid) => answers[qid] !== undefined && answers[qid] !== null).length;
+  const progressPercent = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
+
   return (
-    <div className="container" style={{ padding: '2rem 1.5rem 4rem' }}>
-      {/* Session Title & Breadcrumbs Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1.5rem',
-        }}
-      >
-        <button
-          onClick={() => router.back()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            color: 'var(--text-muted)',
-            fontSize: '0.88rem',
-            fontWeight: 600,
-          }}
-        >
-          <ArrowLeft size={16} />
-          <span>Exit Session</span>
-        </button>
+    <div className="practice-page-wrapper">
+      {/* 1. Mobile Compact Sticky Header (Visible ONLY on mobile <= 768px) */}
+      <header className="mobile-exam-top-bar glass-panel">
+        <div className="mobile-bar-content">
+          <button
+            onClick={() => router.back()}
+            className="mobile-header-btn"
+            title="خروج من الجلسة"
+            aria-label="Exit Session"
+          >
+            <ArrowLeft size={18} />
+          </button>
 
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase' }}>
-            {mode === 'complete_exam' ? 'AUTHENTIC EXAMINATION MODE' : 'PRACTICE MODE'}
-          </div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: '0.1rem 0' }}>
-            {sessionTitle}
-          </h1>
+          <div className="mobile-header-center">
+            <span className="mobile-q-badge">
+              سؤال <strong>{currentIndex + 1}</strong> <span style={{ opacity: 0.6 }}>/ {questions.length}</span>
+            </span>
 
-          {/* In-Exam Mode Toggle Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', marginTop: '0.25rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>نمط التصحيح:</span>
+            {mode === 'complete_exam' && !isSubmitted && (
+              <span className={`mobile-timer-pill ${secondsRemaining < 300 ? 'urgent' : ''}`}>
+                <Clock size={13} />
+                <span>{formatTimer(secondsRemaining)}</span>
+              </span>
+            )}
+
             <button
               onClick={() => setFeedbackMode((prev) => (prev === 'instant' ? 'exam_end' : 'instant'))}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '2px 8px',
-                borderRadius: '9999px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                background: feedbackMode === 'instant' ? 'rgba(6, 182, 212, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                border: feedbackMode === 'instant' ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-                color: feedbackMode === 'instant' ? 'var(--cyan)' : '#f59e0b',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              title="انقر هنا لتغيير نمط التصحيح أثناء الامتحان"
+              className="mobile-mode-pill"
+              title="انقر لتغيير نمط التصحيح"
             >
-              {feedbackMode === 'instant' ? <Sparkles size={12} /> : <Clock size={12} />}
-              <span>{feedbackMode === 'instant' ? 'تصحيح فوري (سؤال بسؤال)' : 'تصحيح بعد الانتهاء كاملاً'}</span>
+              {feedbackMode === 'instant' ? '⚡ فوري' : '⏱️ نهائي'}
             </button>
+          </div>
+
+          <div className="mobile-header-actions">
+            {currentQ && (
+              <button
+                onClick={handleToggleFlag}
+                className={`mobile-flag-btn ${flags[currentQ.id] ? 'is-flagged' : ''}`}
+                title={flags[currentQ.id] ? 'إلغاء التمييز' : 'تمييز السؤال للمراجعة'}
+                aria-label="Flag question"
+              >
+                <Flag size={16} fill={flags[currentQ.id] ? '#f59e0b' : 'none'} />
+              </button>
+            )}
           </div>
         </div>
 
-        <div style={{ width: '80px' }} /> {/* Spacer */}
-      </div>
+        {/* Thin progress indicator bar along bottom of mobile header */}
+        <div className="mobile-progress-track">
+          <div className="mobile-progress-fill" style={{ width: `${progressPercent}%` }} />
+        </div>
+      </header>
 
-      {/* Main Solving Grid: Question Area (left) & Navigation Panel (right) */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 340px',
-          gap: '2rem',
-          alignItems: 'start',
-        }}
-        className="practice-layout"
-      >
-        {/* Left: Active Question Card */}
-        <div>
-          {currentQ && (
-            <QuestionCard
-              key={currentQ.id}
-              question={currentQ}
-              questionIndex={currentIndex}
+      {/* Main Container */}
+      <div className="container practice-main-container">
+        {/* Desktop Session Title & Breadcrumbs Bar (Visible ONLY on desktop > 768px) */}
+        <div className="desktop-session-header">
+          <button
+            onClick={() => router.back()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              color: 'var(--text-muted)',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+            }}
+          >
+            <ArrowLeft size={16} />
+            <span>Exit Session</span>
+          </button>
+
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase' }}>
+              {mode === 'complete_exam' ? 'AUTHENTIC EXAMINATION MODE' : 'PRACTICE MODE'}
+            </div>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: '0.1rem 0' }}>
+              {sessionTitle}
+            </h1>
+
+            {/* In-Exam Mode Toggle Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center', marginTop: '0.25rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>نمط التصحيح:</span>
+              <button
+                onClick={() => setFeedbackMode((prev) => (prev === 'instant' ? 'exam_end' : 'instant'))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  background: feedbackMode === 'instant' ? 'rgba(6, 182, 212, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                  border: feedbackMode === 'instant' ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                  color: feedbackMode === 'instant' ? 'var(--cyan)' : '#f59e0b',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="انقر هنا لتغيير نمط التصحيح أثناء الامتحان"
+              >
+                {feedbackMode === 'instant' ? <Sparkles size={12} /> : <Clock size={12} />}
+                <span>{feedbackMode === 'instant' ? 'تصحيح فوري (سؤال بسؤال)' : 'تصحيح بعد الانتهاء كاملاً'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div style={{ width: '80px' }} /> {/* Spacer */}
+        </div>
+
+        {/* Main Solving Grid: Question Area (left) & Navigation Panel (right) */}
+        <div className="practice-layout">
+          {/* Active Question Card (Spans full width on mobile, 1fr on desktop) */}
+          <div className="practice-question-area">
+            {currentQ && (
+              <QuestionCard
+                key={currentQ.id}
+                question={currentQ}
+                questionIndex={currentIndex}
+                totalQuestions={questions.length}
+                selectedChoiceId={answers[currentQ.id] || null}
+                isFlagged={!!flags[currentQ.id]}
+                activeBookmarkCategory={bookmarksMap[currentQ.id] || null}
+                activeBookmarkNote={bookmarksNotesMap[currentQ.id] || ''}
+                mode={mode as any}
+                feedbackMode={feedbackMode}
+                isSubmitted={false}
+                onSelectChoice={handleSelectChoice}
+                onClearChoice={handleClearChoice}
+                onToggleFlag={handleToggleFlag}
+                onBookmark={handleBookmark}
+              />
+            )}
+          </div>
+
+          {/* Desktop Question Navigation Matrix & Timer (Hidden on mobile <= 768px) */}
+          <div className="desktop-navigation-sidebar">
+            <QuestionNavigation
+              currentIndex={currentIndex}
               totalQuestions={questions.length}
-              selectedChoiceId={answers[currentQ.id] || null}
-              isFlagged={!!flags[currentQ.id]}
-              activeBookmarkCategory={bookmarksMap[currentQ.id] || null}
-              activeBookmarkNote={bookmarksNotesMap[currentQ.id] || ''}
-              mode={mode as any}
-              feedbackMode={feedbackMode}
+              answers={answers}
+              flags={flags}
+              questionIds={questionIds}
+              durationMinutes={durationMinutes}
+              secondsRemaining={secondsRemaining}
+              isExamMode={mode === 'complete_exam'}
               isSubmitted={false}
-              onSelectChoice={handleSelectChoice}
-              onClearChoice={handleClearChoice}
-              onToggleFlag={handleToggleFlag}
-              onBookmark={handleBookmark}
+              onSelectIndex={handleJumpToQuestion}
+              onPrevious={handlePrevQuestion}
+              onNext={handleNextQuestion}
+              onSubmit={handleInitiateSubmit}
             />
-          )}
-        </div>
-
-        {/* Right: Question Navigation Matrix & Timer */}
-        <div>
-          <QuestionNavigation
-            currentIndex={currentIndex}
-            totalQuestions={questions.length}
-            answers={answers}
-            flags={flags}
-            questionIds={questionIds}
-            durationMinutes={durationMinutes}
-            isExamMode={mode === 'complete_exam'}
-            isSubmitted={false}
-            onSelectIndex={(idx) => setCurrentIndex(idx)}
-            onPrevious={() => setCurrentIndex((idx) => Math.max(0, idx - 1))}
-            onNext={() => setCurrentIndex((idx) => Math.min(questions.length - 1, idx + 1))}
-            onSubmit={handleInitiateSubmit}
-          />
+          </div>
         </div>
       </div>
+
+      {/* 2. Mobile Sticky Bottom Navigation Bar (Visible ONLY on mobile <= 768px) */}
+      <nav className="mobile-bottom-bar glass-panel">
+        <button
+          onClick={handlePrevQuestion}
+          disabled={currentIndex === 0}
+          className="mobile-bottom-btn"
+          style={{ opacity: currentIndex === 0 ? 0.35 : 1 }}
+        >
+          <ChevronLeft size={18} />
+          <span>السابق</span>
+        </button>
+
+        <button
+          onClick={() => setPaletteDrawerOpen(true)}
+          className="mobile-bottom-btn mobile-bottom-palette-btn"
+        >
+          <Layers size={17} color="#06b6d4" />
+          <span>الأسئلة ({answeredCount}/{questions.length})</span>
+        </button>
+
+        {currentIndex < questions.length - 1 ? (
+          <button
+            onClick={handleNextQuestion}
+            className="mobile-bottom-btn mobile-bottom-next-btn"
+          >
+            <span>التالي</span>
+            <ChevronRight size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={handleInitiateSubmit}
+            className="mobile-bottom-btn mobile-bottom-submit-btn"
+          >
+            <span>تسليم</span>
+            <CheckCircle2 size={18} />
+          </button>
+        )}
+      </nav>
+
+      {/* 3. Mobile Slide-Up Question Palette Bottom Sheet (Drawer) */}
+      {paletteDrawerOpen && (
+        <div className="mobile-drawer-backdrop" onClick={() => setPaletteDrawerOpen(false)}>
+          <div
+            className="mobile-drawer-sheet glass-panel"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mobile-drawer-handle" />
+
+            <div className="mobile-drawer-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '1.05rem' }}>
+                <Layers size={20} color="#06b6d4" />
+                <span>خريطة أسئلة الامتحان</span>
+              </div>
+              <button
+                onClick={() => setPaletteDrawerOpen(false)}
+                className="mobile-drawer-close"
+                aria-label="Close question drawer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Legend & Stats */}
+            <div className="mobile-drawer-stats">
+              <span>تم الإجابة: <strong style={{ color: '#2dd4bf' }}>{answeredCount}</strong></span>
+              <span>المتبقي: <strong style={{ color: 'var(--text-muted)' }}>{questions.length - answeredCount}</strong></span>
+              <span>مُميز: <strong style={{ color: '#fbbf24' }}>{Object.values(flags).filter(Boolean).length}</strong></span>
+            </div>
+
+            <div className="mobile-drawer-legend">
+              <span className="legend-item"><span className="legend-dot dot-answered" /> تم الحل</span>
+              <span className="legend-item"><span className="legend-dot dot-current" /> الحالي</span>
+              <span className="legend-item"><span className="legend-dot dot-flagged" /> مُميز</span>
+              <span className="legend-item"><span className="legend-dot dot-unanswered" /> فارغ</span>
+            </div>
+
+            {/* Palette Grid */}
+            <div className="mobile-drawer-grid">
+              {questionIds.map((qid, idx) => {
+                const isCurrent = idx === currentIndex;
+                const isAnswered = answers[qid] !== undefined && answers[qid] !== null;
+                const isFlagged = !!flags[qid];
+
+                let btnClass = 'drawer-grid-btn';
+                if (isAnswered) btnClass += ' answered';
+                if (isFlagged) btnClass += ' flagged';
+                if (isCurrent) btnClass += ' current';
+
+                return (
+                  <button
+                    key={qid}
+                    onClick={() => handleJumpToQuestion(idx)}
+                    className={btnClass}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="mobile-drawer-footer">
+              <button
+                onClick={() => {
+                  setPaletteDrawerOpen(false);
+                  handleInitiateSubmit();
+                }}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '0.85rem', fontWeight: 700 }}
+              >
+                <span>{mode === 'complete_exam' ? 'تسليم الامتحان النهائي' : 'إنهاء جلسة التدريب'}</span>
+                <Send size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Unanswered Questions Warning Modal (Requirement #15) */}
       <UnansweredWarningDialog
@@ -838,21 +1069,385 @@ function PracticeInner({ params }: PracticePageProps) {
         unansweredIndices={unansweredIndices}
         onCancel={() => setWarningModalOpen(false)}
         onConfirmSubmit={handleFinalSubmit}
-        onJumpToQuestion={(idx) => setCurrentIndex(idx)}
+        onJumpToQuestion={handleJumpToQuestion}
       />
 
+      {/* Styles for mobile portrait optimization & responsiveness */}
       <style jsx>{`
-        @media (max-width: 960px) {
-          :global(.practice-layout) {
-            grid-template-columns: 1fr !important;
+        .practice-page-wrapper {
+          min-height: 100dvh;
+          position: relative;
+        }
+
+        .mobile-exam-top-bar {
+          display: none;
+        }
+
+        .mobile-bottom-bar {
+          display: none;
+        }
+
+        .desktop-session-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .practice-layout {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          gap: 2rem;
+          align-items: start;
+        }
+
+        /* Responsive layout for <= 768px (Mobile Portrait) */
+        @media (max-width: 768px) {
+          .desktop-session-header {
+            display: none !important;
           }
+
+          .desktop-navigation-sidebar {
+            display: none !important;
+          }
+
+          .practice-layout {
+            display: block !important;
+          }
+
+          :global(.practice-main-container) {
+            padding: 0.5rem 0.5rem 5.5rem !important;
+            max-width: 100% !important;
+          }
+
+          /* Sticky Sleek Mobile Top Bar */
+          .mobile-exam-top-bar {
+            display: block;
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 45;
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0.5rem 0.75rem 0.4rem;
+            margin-bottom: 0.5rem;
+          }
+
+          .mobile-bar-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+          }
+
+          .mobile-header-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface-elevated);
+            color: var(--text-muted);
+            border: 1px solid var(--border-subtle);
+          }
+
+          .mobile-header-center {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .mobile-q-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--cyan);
+            background: rgba(6, 182, 212, 0.12);
+            padding: 2px 8px;
+            border-radius: 9999px;
+            border: 1px solid rgba(6, 182, 212, 0.25);
+          }
+
+          .mobile-timer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            background: var(--bg-surface-elevated);
+            padding: 2px 7px;
+            border-radius: 9999px;
+            border: 1px solid var(--border-subtle);
+          }
+
+          .mobile-timer-pill.urgent {
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+            animation: pulse 1s infinite;
+          }
+
+          .mobile-mode-pill {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-dim);
+            cursor: pointer;
+          }
+
+          .mobile-flag-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+          }
+
+          .mobile-flag-btn.is-flagged {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.18);
+            border-color: rgba(245, 158, 11, 0.35);
+          }
+
+          .mobile-progress-track {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+            margin-top: 0.4rem;
+            overflow: hidden;
+          }
+
+          .mobile-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0d9488, #06b6d4);
+            transition: width 0.3s ease;
+          }
+
+          /* Sticky Mobile Bottom Navigation Bar */
+          .mobile-bottom-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 45;
+            background: var(--bg-glass);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-top: 1px solid var(--border-subtle);
+            padding: 0.65rem 0.85rem;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
+          }
+
+          .mobile-bottom-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.65rem 0.95rem;
+            border-radius: var(--radius-md);
+            font-size: 0.88rem;
+            font-weight: 700;
+            background: var(--bg-surface-elevated);
+            color: var(--text-main);
+            border: 1px solid var(--border-subtle);
+            transition: all 0.15s ease;
+          }
+
+          .mobile-bottom-palette-btn {
+            flex: 1;
+            background: rgba(6, 182, 212, 0.1);
+            border-color: rgba(6, 182, 212, 0.3);
+            color: var(--cyan);
+            font-size: 0.82rem;
+          }
+
+          .mobile-bottom-next-btn {
+            background: linear-gradient(135deg, #0d9488 0%, #0284c7 100%);
+            color: #ffffff;
+            border: none;
+          }
+
+          .mobile-bottom-submit-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            border: none;
+          }
+
+          /* Bottom Sheet Palette Drawer */
+          .mobile-drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            align-items: flex-end;
+            animation: fadeIn 0.2s ease-out;
+          }
+
+          .mobile-drawer-sheet {
+            width: 100%;
+            max-height: 85dvh;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-highlight);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: 1rem 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow-y: auto;
+          }
+
+          .mobile-drawer-handle {
+            width: 40px;
+            height: 4px;
+            border-radius: 9999px;
+            background: var(--text-dim);
+            opacity: 0.5;
+            margin: 0 auto;
+          }
+
+          .mobile-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+          }
+
+          .mobile-drawer-close {
+            color: var(--text-dim);
+            padding: 4px;
+            cursor: pointer;
+          }
+
+          .mobile-drawer-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            background: var(--bg-surface-elevated);
+            padding: 0.5rem 0.85rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+          }
+
+          .mobile-drawer-legend {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            padding: 0 0.25rem;
+          }
+
+          .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+          }
+
+          .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+          }
+
+          .dot-answered { background: #10b981; }
+          .dot-current { background: #06b6d4; }
+          .dot-flagged { background: #f59e0b; }
+          .dot-unanswered { background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); }
+
+          .mobile-drawer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+            gap: 0.45rem;
+            max-height: 240px;
+            overflow-y: auto;
+            padding: 0.25rem 0;
+          }
+
+          .drawer-grid-btn {
+            height: 42px;
+            border-radius: 8px;
+            background: var(--bg-surface-elevated);
+            border: 1.5px solid var(--border-subtle);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .drawer-grid-btn.answered {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.45);
+            color: #34d399;
+          }
+
+          .drawer-grid-btn.flagged {
+            border-color: #f59e0b;
+          }
+
+          .drawer-grid-btn.current {
+            background: #06b6d4;
+            border-color: #06b6d4;
+            color: #ffffff;
+            box-shadow: 0 2px 10px rgba(6, 182, 212, 0.45);
+          }
+
+          .mobile-drawer-footer {
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-subtle);
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
     </div>
   );
 }
 
-export default function UniversalPracticePage(props: PracticePageProps) {
+export default function PracticePage(props: PracticePageProps) {
   return (
     <Suspense
       fallback={
