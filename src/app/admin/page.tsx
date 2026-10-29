@@ -26,6 +26,9 @@ import {
   Copy,
   Users,
   KeyRound,
+  Search,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import {
   AcademicYear,
@@ -101,8 +104,12 @@ export default function AdminDashboardPage() {
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [storageStatus, setStorageStatus] = useState<any>(null);
 
-  // Exam Creation Modal State
+  // Exam Creation & Editing Modal State
   const [examModalOpen, setExamModalOpen] = useState(false);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [selectedExamQuestionIds, setSelectedExamQuestionIds] = useState<string[]>([]);
+  const [examQuestionSearch, setExamQuestionSearch] = useState('');
+  const [examQuestionFilterModule, setExamQuestionFilterModule] = useState('all');
   const [examForm, setExamForm] = useState({
     title: '',
     academic_year_id: '',
@@ -856,10 +863,16 @@ D) Normal myocardium with subtle wavy fibers only
       {/* TAB 2: EXAMS MANAGER */}
       {activeTab === 'exams' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Previous-Year & Shelf Exams</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Previous-Year & Shelf Exams</h2>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                إدارة كافة الامتحانات: تعديل الأسماء، المدة، درجة النجاح، وربط أو فك الأسئلة دفعة واحدة
+              </div>
+            </div>
             <button
               onClick={() => {
+                setEditingExamId(null);
                 setExamForm({
                   title: '',
                   academic_year_id: academicYears[0]?.id || '',
@@ -869,6 +882,9 @@ D) Normal myocardium with subtle wavy fibers only
                   passing_score: 70,
                   instructions: '',
                 });
+                setSelectedExamQuestionIds([]);
+                setExamQuestionSearch('');
+                setExamQuestionFilterModule('all');
                 setExamModalOpen(true);
               }}
               className="btn btn-primary"
@@ -890,26 +906,65 @@ D) Normal myocardium with subtle wavy fibers only
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
                     <span className="badge badge-teal">{exam.academic_year?.name || 'Academic Year'}</span>
                     <span className="badge badge-blue">{exam.module?.name || 'Module'}</span>
                     <span className="badge badge-purple">
                       {exam.exam_type === 'end_module' ? 'END MODULE' : 'FINAL'}
                     </span>
+                    <span className="badge badge-yellow">
+                      {exam.question_count || (exam.question_ids?.length || 0)} questions
+                    </span>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{exam.title}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.2rem' }}>{exam.title}</div>
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    {exam.question_count || 0} questions linked • Duration: {exam.duration_minutes} min • Passing: {exam.passing_score}%
+                    Duration: {exam.duration_minutes} min • Passing Score: {exam.passing_score}% • Type: {exam.exam_type === 'end_module' ? 'End of Module' : 'Comprehensive Final'}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => {
+                      setEditingExamId(exam.id);
+                      setExamForm({
+                        title: exam.title,
+                        academic_year_id: exam.academic_year_id,
+                        module_id: exam.module_id,
+                        exam_type: (exam.exam_type === 'end_module' || exam.exam_type === 'midterm') ? 'end_module' : 'final',
+                        duration_minutes: exam.duration_minutes || 60,
+                        passing_score: exam.passing_score || 70,
+                        instructions: exam.instructions || '',
+                      });
+                      const linkedIds = new Set<string>();
+                      if (Array.isArray(exam.question_ids)) {
+                        exam.question_ids.forEach((qid) => linkedIds.add(qid));
+                      }
+                      questions.forEach((q) => {
+                        if (q.exam_ids?.includes(exam.id)) {
+                          linkedIds.add(q.id);
+                        }
+                      });
+                      setSelectedExamQuestionIds(Array.from(linkedIds));
+                      setExamQuestionSearch('');
+                      setExamQuestionFilterModule(exam.module_id || 'all');
+                      setExamModalOpen(true);
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ gap: '0.35rem', color: 'var(--color-primary)' }}
+                    title="تعديل بيانات الامتحان والأسئلة المرتبطة به"
+                  >
+                    <Edit size={14} />
+                    <span>تعديل الامتحان</span>
+                  </button>
+
                   <button
                     onClick={async () => {
-                      if (!confirm(`Delete ${exam.title}?`)) return;
+                      if (!confirm(`Delete exam "${exam.title}"?`)) return;
                       // Optimistic delete: remove instantly from UI
                       setExams((prev) => prev.filter((e) => e.id !== exam.id));
                       try {
@@ -926,6 +981,7 @@ D) Normal myocardium with subtle wavy fibers only
                       await refreshAllData();
                     }}
                     className="btn btn-danger btn-sm"
+                    title="حذف الامتحان"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -2115,7 +2171,7 @@ C) Choice C"
         </div>
       )}
       {/* ========================================================== */}
-      {/* EXAM CREATION MODAL WITH END MODULE & FINAL SELECTION      */}
+      {/* EXAM CREATION & EDITING MODAL WITH FULL QUESTION MANAGER   */}
       {/* ========================================================== */}
       {examModalOpen && (
         <div
@@ -2135,8 +2191,10 @@ C) Choice C"
           <div
             className="glass-panel animate-fade-in"
             style={{
-              maxWidth: '620px',
+              maxWidth: '820px',
               width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
               padding: '2rem',
               borderRadius: 'var(--radius-xl)',
               background: 'var(--bg-surface)',
@@ -2145,12 +2203,16 @@ C) Choice C"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>Create New Examination</h3>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Set up exam metadata and classify as END MODULE or FINAL.
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 800 }}>
+                  {editingExamId ? 'تعديل بيانات الامتحان والأسئلة المرتبطة' : 'إنشاء امتحان جديد'}
+                </h3>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                  {editingExamId
+                    ? 'تعديل اسم الامتحان، المدة، درجة النجاح، وتحديد أو فك الأسئلة المرتبطة به دفعة واحدة'
+                    : 'قم بضبط إعدادات الامتحان وتحديد تصنيفه وقائمة الأسئلة'}
                 </div>
               </div>
-              <button onClick={() => setExamModalOpen(false)} style={{ color: 'var(--text-dim)', padding: '0.5rem' }}>
+              <button onClick={() => setExamModalOpen(false)} style={{ color: 'var(--text-dim)', padding: '0.5rem', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -2167,18 +2229,41 @@ C) Choice C"
                   return;
                 }
                 try {
-                  const res = await adminFetch('/api/exams', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(examForm),
-                  });
-                  const d = await res.json();
-                  if (d.success) {
-                    showFeedback('success', 'Examination created successfully!');
-                    setExamModalOpen(false);
-                    refreshAllData();
+                  if (editingExamId) {
+                    const res = await adminFetch('/api/exams', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        id: editingExamId,
+                        ...examForm,
+                        question_ids: selectedExamQuestionIds,
+                      }),
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                      showFeedback('success', `تم تحديث الامتحان "${examForm.title}" بنجاح مع ربط ${selectedExamQuestionIds.length} سؤال!`);
+                      setExamModalOpen(false);
+                      refreshAllData();
+                    } else {
+                      showFeedback('error', d.message || d.error || 'Failed to update exam');
+                    }
                   } else {
-                    showFeedback('error', d.message || d.error || 'Failed to create exam');
+                    const res = await adminFetch('/api/exams', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        ...examForm,
+                        question_ids: selectedExamQuestionIds,
+                      }),
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                      showFeedback('success', `تم إنشاء الامتحان "${examForm.title}" بنجاح مع ربط ${selectedExamQuestionIds.length} سؤال!`);
+                      setExamModalOpen(false);
+                      refreshAllData();
+                    } else {
+                      showFeedback('error', d.message || d.error || 'Failed to create exam');
+                    }
                   }
                 } catch (err) {
                   showFeedback('error', String(err));
@@ -2187,7 +2272,7 @@ C) Choice C"
               style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
             >
               <div className="form-group">
-                <label className="form-label">Exam Title *</label>
+                <label className="form-label">اسم الامتحان (Exam Title) *</label>
                 <input
                   type="text"
                   value={examForm.title}
@@ -2201,14 +2286,14 @@ C) Choice C"
               {/* Exam Type Selection: END MODULE vs FINAL */}
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
-                  Exam Classification (نوع الامتحان) *
+                  نوع الامتحان (Exam Classification) *
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <button
                     type="button"
                     onClick={() => setExamForm({ ...examForm, exam_type: 'end_module' })}
                     style={{
-                      padding: '1rem',
+                      padding: '0.9rem',
                       borderRadius: 'var(--radius-md)',
                       border: examForm.exam_type === 'end_module' ? '2px solid #a855f7' : '1px solid var(--border-subtle)',
                       background: examForm.exam_type === 'end_module' ? 'rgba(168, 85, 247, 0.15)' : 'var(--bg-surface-elevated)',
@@ -2218,11 +2303,11 @@ C) Choice C"
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '0.35rem',
+                      gap: '0.25rem',
                       transition: 'all 0.2s ease',
                     }}
                   >
-                    <span style={{ fontSize: '1.05rem' }}>END MODULE</span>
+                    <span style={{ fontSize: '1rem' }}>END MODULE</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>امتحان نهاية الموديول</span>
                   </button>
 
@@ -2230,7 +2315,7 @@ C) Choice C"
                     type="button"
                     onClick={() => setExamForm({ ...examForm, exam_type: 'final' })}
                     style={{
-                      padding: '1rem',
+                      padding: '0.9rem',
                       borderRadius: 'var(--radius-md)',
                       border: examForm.exam_type === 'final' ? '2px solid #06b6d4' : '1px solid var(--border-subtle)',
                       background: examForm.exam_type === 'final' ? 'rgba(6, 182, 212, 0.15)' : 'var(--bg-surface-elevated)',
@@ -2240,11 +2325,11 @@ C) Choice C"
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '0.35rem',
+                      gap: '0.25rem',
                       transition: 'all 0.2s ease',
                     }}
                   >
-                    <span style={{ fontSize: '1.05rem' }}>FINAL</span>
+                    <span style={{ fontSize: '1rem' }}>FINAL</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>الامتحان النهائي الشامل</span>
                   </button>
                 </div>
@@ -2252,7 +2337,7 @@ C) Choice C"
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Academic Year</label>
+                  <label className="form-label">السنة الدراسية (Academic Year) *</label>
                   <select
                     value={examForm.academic_year_id}
                     onChange={(e) => setExamForm({ ...examForm, academic_year_id: e.target.value })}
@@ -2267,7 +2352,7 @@ C) Choice C"
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Module</label>
+                  <label className="form-label">الموديول (Module) *</label>
                   <select
                     value={examForm.module_id}
                     onChange={(e) => setExamForm({ ...examForm, module_id: e.target.value })}
@@ -2286,7 +2371,7 @@ C) Choice C"
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Duration (Minutes)</label>
+                  <label className="form-label">مدة الامتحان بالدقائق (Duration Minutes)</label>
                   <input
                     type="number"
                     value={examForm.duration_minutes}
@@ -2297,7 +2382,7 @@ C) Choice C"
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Passing Score (%)</label>
+                  <label className="form-label">درجة النجاح % (Passing Score)</label>
                   <input
                     type="number"
                     value={examForm.passing_score}
@@ -2310,23 +2395,211 @@ C) Choice C"
               </div>
 
               <div className="form-group">
-                <label className="form-label">Instructions (Optional)</label>
+                <label className="form-label">تعليمات الامتحان (Instructions)</label>
                 <textarea
                   value={examForm.instructions}
                   onChange={(e) => setExamForm({ ...examForm, instructions: e.target.value })}
                   placeholder="Instructions for students taking this exam..."
                   className="form-textarea"
-                  style={{ minHeight: '65px' }}
+                  style={{ minHeight: '60px' }}
                 />
+              </div>
+
+              {/* ========================================================== */}
+              {/* BULK QUESTION SELECTOR / ASSIGNMENT SECTION                */}
+              {/* ========================================================== */}
+              <div
+                style={{
+                  background: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <label style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>إدارة وربط أسئلة الامتحان دفعة واحدة</span>
+                      <span className="badge badge-teal">{selectedExamQuestionIds.length} سؤال محدد</span>
+                    </label>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      حدد أو ألغِ تحديد الأسئلة التي يجب أن يتضمنها هذا الامتحان
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const filtered = questions.filter((q) => {
+                          if (examQuestionFilterModule !== 'all' && q.module_id !== examQuestionFilterModule) return false;
+                          if (examQuestionSearch.trim()) {
+                            const term = examQuestionSearch.trim().toLowerCase();
+                            return (
+                              q.question_text?.toLowerCase().includes(term) ||
+                              q.subject?.name?.toLowerCase().includes(term) ||
+                              q.chapter?.name?.toLowerCase().includes(term) ||
+                              q.concept?.name?.toLowerCase().includes(term)
+                            );
+                          }
+                          return true;
+                        });
+                        const newSet = new Set(selectedExamQuestionIds);
+                        filtered.forEach((q) => newSet.add(q.id));
+                        setSelectedExamQuestionIds(Array.from(newSet));
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+                    >
+                      تحديد كل المصفى
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedExamQuestionIds([])}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', color: '#f87171' }}
+                    >
+                      إلغاء تحديد الكل
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter and search bar inside question selector */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+                    <input
+                      type="text"
+                      value={examQuestionSearch}
+                      onChange={(e) => setExamQuestionSearch(e.target.value)}
+                      placeholder="ابحث في الأسئلة بنص السؤال أو المادة أو المفهوم..."
+                      className="form-input"
+                      style={{ paddingLeft: '2.2rem', fontSize: '0.85rem' }}
+                    />
+                  </div>
+
+                  <select
+                    value={examQuestionFilterModule}
+                    onChange={(e) => setExamQuestionFilterModule(e.target.value)}
+                    className="form-select"
+                    style={{ fontSize: '0.85rem', minWidth: '170px' }}
+                  >
+                    <option value="all">كل الموديولات</option>
+                    {modules.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Question List Box */}
+                <div
+                  style={{
+                    maxHeight: '260px',
+                    overflowY: 'auto',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-surface)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {questions
+                    .filter((q) => {
+                      if (examQuestionFilterModule !== 'all' && q.module_id !== examQuestionFilterModule) return false;
+                      if (examQuestionSearch.trim()) {
+                        const term = examQuestionSearch.trim().toLowerCase();
+                        return (
+                          q.question_text?.toLowerCase().includes(term) ||
+                          q.subject?.name?.toLowerCase().includes(term) ||
+                          q.chapter?.name?.toLowerCase().includes(term) ||
+                          q.concept?.name?.toLowerCase().includes(term)
+                        );
+                      }
+                      return true;
+                    })
+                    .map((q, idx) => {
+                      const isSelected = selectedExamQuestionIds.includes(q.id);
+                      return (
+                        <div
+                          key={q.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedExamQuestionIds(selectedExamQuestionIds.filter((id) => id !== q.id));
+                            } else {
+                              setSelectedExamQuestionIds([...selectedExamQuestionIds, q.id]);
+                            }
+                          }}
+                          style={{
+                            padding: '0.65rem 0.85rem',
+                            borderBottom: '1px solid var(--border-subtle)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            background: isSelected ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
+                            transition: 'background 0.15s ease',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // Handled by container onClick
+                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                          />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-dim)', minWidth: '30px' }}>
+                            #{idx + 1}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                              {q.subject?.name && (
+                                <span className="badge badge-purple" style={{ fontSize: '0.68rem', padding: '0.15rem 0.4rem' }}>
+                                  {q.subject.name}
+                                </span>
+                              )}
+                              {q.concept?.name && (
+                                <span className="badge badge-teal" style={{ fontSize: '0.68rem', padding: '0.15rem 0.4rem' }}>
+                                  {q.concept.name}
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '0.83rem',
+                                color: isSelected ? 'var(--text-main)' : 'var(--text-muted)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {q.question_text}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  {questions.length === 0 && (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      لا توجد أسئلة مسجلة في قاعدة البيانات حالياً
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
                 <button type="button" onClick={() => setExamModalOpen(false)} className="btn btn-secondary">
-                  Cancel
+                  إلغاء (Cancel)
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ gap: '0.4rem' }}>
                   <Save size={16} />
-                  <span>Create Examination</span>
+                  <span>
+                    {editingExamId
+                      ? `حفظ تعديلات الامتحان (${selectedExamQuestionIds.length} سؤال)`
+                      : `إنشاء الامتحان (${selectedExamQuestionIds.length} سؤال)`}
+                  </span>
                 </button>
               </div>
             </form>

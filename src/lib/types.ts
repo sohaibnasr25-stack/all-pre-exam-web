@@ -71,6 +71,7 @@ export interface Exam {
   academic_year?: AcademicYear;
   module?: Module;
   question_count?: number;
+  question_ids?: string[];
   completion_status?: 'not_started' | 'in_progress' | 'completed';
   previous_score?: number;
 }

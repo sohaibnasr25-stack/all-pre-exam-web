@@ -570,6 +570,7 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
           ...e,
           exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
           question_count: Array.isArray(e.exam_questions) ? e.exam_questions.length : 0,
+          question_ids: Array.isArray(e.exam_questions) ? e.exam_questions.map((eq: any) => eq.question_id) : [],
           completion_status: 'not_started',
         }));
       }
@@ -589,7 +590,9 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
   }
 
   return list.map((e) => {
-    const count = store.exam_questions.filter((eq) => eq.exam_id === e.id).length;
+    const linkedEq = store.exam_questions.filter((eq) => eq.exam_id === e.id);
+    const count = linkedEq.length;
+    const qids = linkedEq.map((eq) => eq.question_id);
     const lastAttempt = store.student_attempts
       .filter((a) => a.entity_id === e.id && a.is_completed)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
@@ -598,6 +601,7 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
       ...e,
       exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
       question_count: count,
+      question_ids: qids,
       academic_year: store.academic_years.find((y) => y.id === e.academic_year_id),
       module: store.modules.find((m) => m.id === e.module_id),
       completion_status: lastAttempt ? 'completed' : 'not_started',
@@ -619,6 +623,7 @@ export async function getExam(id: string): Promise<Exam | null> {
           ...data,
           exam_type: (data.exam_type === 'midterm' || data.exam_type === 'end_module') ? 'end_module' : (data.exam_type || 'final'),
           question_count: Array.isArray(data.exam_questions) ? data.exam_questions.length : 0,
+          question_ids: Array.isArray(data.exam_questions) ? data.exam_questions.map((eq: any) => eq.question_id) : [],
         };
       }
     } catch (err) {
@@ -629,11 +634,14 @@ export async function getExam(id: string): Promise<Exam | null> {
   const store = readLocalStore();
   const exam = store.exams.find((e) => e.id === id);
   if (!exam) return null;
-  const count = store.exam_questions.filter((eq) => eq.exam_id === exam.id).length;
+  const linkedEq = store.exam_questions.filter((eq) => eq.exam_id === exam.id);
+  const count = linkedEq.length;
+  const qids = linkedEq.map((eq) => eq.question_id);
   return {
     ...exam,
     exam_type: (exam.exam_type === 'midterm' || exam.exam_type === 'end_module') ? 'end_module' : (exam.exam_type || 'final'),
     question_count: count,
+    question_ids: qids,
     academic_year: store.academic_years.find((y) => y.id === exam.academic_year_id),
     module: store.modules.find((m) => m.id === exam.module_id),
   };
@@ -699,40 +707,78 @@ export async function updateExam(
   id: string,
   updates: Partial<Exam> & { question_ids?: string[] }
 ): Promise<Exam | null> {
-  const store = readLocalStore();
-  const index = store.exams.findIndex((e) => e.id === id);
-  if (index === -1) return null;
-
-  store.exams[index] = { ...store.exams[index], ...updates };
-
-  if (updates.question_ids) {
-    // Re-link questions
-    store.exam_questions = store.exam_questions.filter((eq) => eq.exam_id !== id);
-    updates.question_ids.forEach((qid, idx) => {
-      store.exam_questions.push({
-        id: `eq-${Date.now()}-${idx}`,
-        exam_id: id,
-        question_id: qid,
-        order_index: idx + 1,
-      });
-    });
-  }
-
-  writeLocalStore(store);
+  const { question_ids, ...examUpdates } = updates;
+  let updatedExam: Exam | null = null;
 
   if (supabase) {
     try {
-      const { question_ids: _, ...examUpdates } = updates;
-      if ((examUpdates as any).exam_type === 'end_module') {
-        (examUpdates as any).exam_type = 'midterm';
+      const dbPayload = { ...examUpdates };
+      if ((dbPayload as any).exam_type === 'end_module') {
+        (dbPayload as any).exam_type = 'midterm';
       }
-      await supabase.from('exams').update(examUpdates).eq('id', id);
+      delete (dbPayload as any).academic_year;
+      delete (dbPayload as any).module;
+      delete (dbPayload as any).question_count;
+      delete (dbPayload as any).question_ids;
+      delete (dbPayload as any).exam_questions;
+      delete (dbPayload as any).questions;
+      delete (dbPayload as any).completion_status;
+      delete (dbPayload as any).previous_score;
+
+      if (Object.keys(dbPayload).length > 0) {
+        const { data, error } = await supabase
+          .from('exams')
+          .update(dbPayload)
+          .eq('id', id)
+          .select('*, academic_year:academic_years(*), module:modules(*)')
+          .single();
+        if (!error && data) {
+          updatedExam = {
+            ...data,
+            exam_type: (data.exam_type === 'midterm' || data.exam_type === 'end_module') ? 'end_module' : (data.exam_type || 'final'),
+          };
+        }
+      }
+
+      if (Array.isArray(question_ids)) {
+        await supabase.from('exam_questions').delete().eq('exam_id', id);
+        if (question_ids.length > 0) {
+          const links = question_ids.map((qid, idx) => ({
+            id: `eq-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+            exam_id: id,
+            question_id: qid,
+            order_index: idx + 1,
+          }));
+          await supabase.from('exam_questions').insert(links);
+        }
+      }
     } catch (e) {
       console.warn('Error updating exam in Supabase:', e);
     }
   }
 
-  return store.exams[index];
+  const store = readLocalStore();
+  const index = store.exams.findIndex((e) => e.id === id);
+  if (index !== -1) {
+    store.exams[index] = { ...store.exams[index], ...examUpdates };
+    if (Array.isArray(question_ids)) {
+      store.exam_questions = store.exam_questions.filter((eq) => eq.exam_id !== id);
+      question_ids.forEach((qid, idx) => {
+        store.exam_questions.push({
+          id: `eq-${Date.now()}-${idx}`,
+          exam_id: id,
+          question_id: qid,
+          order_index: idx + 1,
+        });
+      });
+    }
+    writeLocalStore(store);
+    if (!updatedExam) {
+      updatedExam = store.exams[index];
+    }
+  }
+
+  return updatedExam || (await getExam(id));
 }
 
 export async function deleteExam(id: string): Promise<boolean> {
@@ -1033,66 +1079,22 @@ export async function updateQuestion(
     exam_ids?: string[];
   }
 ): Promise<Question | null> {
-  const store = readLocalStore();
-  const qIndex = store.questions.findIndex((q) => q.id === id);
-  if (qIndex === -1) return null;
-
-  store.questions[qIndex] = { ...store.questions[qIndex], ...(payload.question || {}) };
-
-  if (Array.isArray(payload.answer_choices)) {
-    store.answer_choices = store.answer_choices.filter((c) => c.question_id !== id);
-    payload.answer_choices.forEach((c, idx) => {
-      store.answer_choices.push({
-        id: c.id || `c-${id}-${idx}`,
-        question_id: id,
-        choice_letter: c.choice_letter,
-        choice_text: c.choice_text,
-        is_correct: c.is_correct,
-        order_index: c.order_index || idx + 1,
-      });
-    });
-  }
-
-  if (Array.isArray(payload.explanations)) {
-    store.explanations = store.explanations.filter((e) => e.question_id !== id);
-    payload.explanations.forEach((e, idx) => {
-      const matchedChoice = store.answer_choices.find(
-        (c) => c.question_id === id && c.choice_letter === e.choice_letter
-      );
-      store.explanations.push({
-        id: e.id || `exp-${id}-${idx}`,
-        question_id: id,
-        choice_id: matchedChoice?.id || e.choice_id || null,
-        choice_letter: e.choice_letter,
-        explanation_text: e.explanation_text,
-        is_why_correct: e.is_why_correct,
-        is_why_incorrect: e.is_why_incorrect,
-        source_document: e.source_document,
-        source_page: e.source_page,
-        source_reference: e.source_reference,
-        created_at: new Date().toISOString(),
-      });
-    });
-  }
-
-  if (Array.isArray(payload.exam_ids)) {
-    store.exam_questions = store.exam_questions.filter((eq) => eq.question_id !== id);
-    payload.exam_ids.forEach((eid, idx) => {
-      store.exam_questions.push({
-        id: `eq-${Date.now()}-${idx}`,
-        exam_id: eid,
-        question_id: id,
-        order_index: idx + 1,
-      });
-    });
-  }
-
-  writeLocalStore(store);
-
   if (supabase) {
     try {
-      if (payload.question) {
-        await supabase.from('questions').update(payload.question).eq('id', id);
+      if (payload.question && Object.keys(payload.question).length > 0) {
+        const qUpdate = { ...payload.question };
+        delete (qUpdate as any).answer_choices;
+        delete (qUpdate as any).explanations;
+        delete (qUpdate as any).exam_ids;
+        delete (qUpdate as any).exams;
+        delete (qUpdate as any).academic_year;
+        delete (qUpdate as any).module;
+        delete (qUpdate as any).subject;
+        delete (qUpdate as any).chapter;
+        delete (qUpdate as any).concept;
+        if (Object.keys(qUpdate).length > 0) {
+          await supabase.from('questions').update(qUpdate).eq('id', id);
+        }
       }
       if (Array.isArray(payload.answer_choices)) {
         await supabase.from('answer_choices').delete().eq('question_id', id);
@@ -1104,7 +1106,9 @@ export async function updateQuestion(
           is_correct: c.is_correct,
           order_index: c.order_index || idx + 1,
         }));
-        await supabase.from('answer_choices').insert(choicesToInsert);
+        if (choicesToInsert.length > 0) {
+          await supabase.from('answer_choices').insert(choicesToInsert);
+        }
       }
       if (Array.isArray(payload.explanations)) {
         await supabase.from('explanations').delete().eq('question_id', id);
@@ -1121,21 +1125,81 @@ export async function updateQuestion(
           source_reference: e.source_reference,
           created_at: new Date().toISOString(),
         }));
-        await supabase.from('explanations').insert(explsToInsert);
+        if (explsToInsert.length > 0) {
+          await supabase.from('explanations').insert(explsToInsert);
+        }
       }
       if (Array.isArray(payload.exam_ids)) {
         await supabase.from('exam_questions').delete().eq('question_id', id);
         const eqToInsert = payload.exam_ids.map((eid, idx) => ({
-          id: `eq-${Date.now()}-${idx}`,
+          id: `eq-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
           exam_id: eid,
           question_id: id,
           order_index: idx + 1,
         }));
-        await supabase.from('exam_questions').insert(eqToInsert);
+        if (eqToInsert.length > 0) {
+          await supabase.from('exam_questions').insert(eqToInsert);
+        }
       }
     } catch (e) {
       console.warn('Error syncing updated question to Supabase:', e);
     }
+  }
+
+  const store = readLocalStore();
+  const qIndex = store.questions.findIndex((q) => q.id === id);
+  if (qIndex !== -1) {
+    store.questions[qIndex] = { ...store.questions[qIndex], ...(payload.question || {}) };
+
+    if (Array.isArray(payload.answer_choices)) {
+      store.answer_choices = store.answer_choices.filter((c) => c.question_id !== id);
+      payload.answer_choices.forEach((c, idx) => {
+        store.answer_choices.push({
+          id: c.id || `c-${id}-${idx}`,
+          question_id: id,
+          choice_letter: c.choice_letter,
+          choice_text: c.choice_text,
+          is_correct: c.is_correct,
+          order_index: c.order_index || idx + 1,
+        });
+      });
+    }
+
+    if (Array.isArray(payload.explanations)) {
+      store.explanations = store.explanations.filter((e) => e.question_id !== id);
+      payload.explanations.forEach((e, idx) => {
+        const matchedChoice = store.answer_choices.find(
+          (c) => c.question_id === id && c.choice_letter === e.choice_letter
+        );
+        store.explanations.push({
+          id: e.id || `exp-${id}-${idx}`,
+          question_id: id,
+          choice_id: matchedChoice?.id || e.choice_id || null,
+          choice_letter: e.choice_letter,
+          explanation_text: e.explanation_text,
+          is_why_correct: e.is_why_correct,
+          is_why_incorrect: e.is_why_incorrect,
+          source_document: e.source_document,
+          source_page: e.source_page,
+          source_reference: e.source_reference,
+          created_at: new Date().toISOString(),
+        });
+      });
+    }
+
+    if (Array.isArray(payload.exam_ids)) {
+      store.exam_questions = store.exam_questions.filter((eq) => eq.question_id !== id);
+      payload.exam_ids.forEach((eid, idx) => {
+        store.exam_questions.push({
+          id: `eq-${Date.now()}-${idx}`,
+          exam_id: eid,
+          question_id: id,
+          order_index: idx + 1,
+        });
+      });
+    }
+
+    writeLocalStore(store);
   }
 
   return getQuestion(id);
@@ -1440,6 +1504,17 @@ export async function recordAttempt(data: {
 
   writeLocalStore(store);
 
+  if (supabase) {
+    try {
+      await supabase.from('student_attempts').insert(newAttempt);
+      if (insertedAnswers.length > 0) {
+        await supabase.from('student_answers').insert(insertedAnswers);
+      }
+    } catch (e) {
+      console.warn('Error recording student attempt in Supabase:', e);
+    }
+  }
+
   return {
     ...newAttempt,
     answers: insertedAnswers,
@@ -1476,8 +1551,22 @@ export async function resetStudentProgress(studentId = 'default_student'): Promi
 }
 
 export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
-  const store = readLocalStore();
-  const allQuestions = await getQuestions();
+  const [allQuestions, allConcepts, allChapters, allSubjects, allModules, allYears, allExams] = await Promise.all([
+    getQuestions(),
+    getConcepts(),
+    getChapters(),
+    getSubjects(),
+    getModules(),
+    getAcademicYears(),
+    getExams(),
+  ]);
+
+  const conceptLookup = new Map(allConcepts.map((c) => [c.id, c]));
+  const chapterLookup = new Map(allChapters.map((c) => [c.id, c]));
+  const subjectLookup = new Map(allSubjects.map((s) => [s.id, s]));
+  const moduleLookup = new Map(allModules.map((m) => [m.id, m]));
+  const yearLookup = new Map(allYears.map((y) => [y.id, y]));
+  const examLookup = new Map(allExams.map((e) => [e.id, e]));
 
   // Group questions by concept
   const conceptMap = new Map<string, Question[]>();
@@ -1491,25 +1580,42 @@ export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
   const stats: RepeatedConceptStat[] = [];
 
   conceptMap.forEach((questionsForConcept, conceptId) => {
-    const conceptObj = store.concepts.find((c) => c.id === conceptId);
-    if (!conceptObj) return;
+    const conceptObj = conceptLookup.get(conceptId);
+    const fallbackConcept = questionsForConcept.find((q: any) => q.concept?.id === conceptId)?.concept;
+    const conceptName = conceptObj?.name || fallbackConcept?.name;
+    if (!conceptName) return;
 
-    const chapterObj = store.chapters.find((ch) => ch.id === conceptObj.chapter_id);
-    const subjectObj = chapterObj ? store.subjects.find((s) => s.id === chapterObj.subject_id) : undefined;
-    const moduleObj = subjectObj ? store.modules.find((m) => m.id === subjectObj.module_id) : undefined;
-    const yearObj = moduleObj ? store.academic_years.find((y) => y.id === moduleObj.academic_year_id) : undefined;
+    const chapterId = conceptObj?.chapter_id || fallbackConcept?.chapter_id || questionsForConcept[0]?.chapter_id;
+    const chapterObj = chapterId ? chapterLookup.get(chapterId) : undefined;
+    const fallbackChapter = questionsForConcept.find((q: any) => q.chapter)?.chapter;
+
+    const subjectId = chapterObj?.subject_id || fallbackChapter?.subject_id || questionsForConcept[0]?.subject_id;
+    const subjectObj = subjectId ? subjectLookup.get(subjectId) : undefined;
+    const fallbackSubject = questionsForConcept.find((q: any) => q.subject)?.subject;
+
+    const moduleId = subjectObj?.module_id || fallbackSubject?.module_id || questionsForConcept[0]?.module_id;
+    const moduleObj = moduleId ? moduleLookup.get(moduleId) : undefined;
+    const fallbackModule = questionsForConcept.find((q: any) => q.module)?.module;
+
+    const academicYearId = moduleObj?.academic_year_id || fallbackModule?.academic_year_id || questionsForConcept[0]?.academic_year_id;
+    const yearObj = academicYearId ? yearLookup.get(academicYearId) : undefined;
+    const fallbackYear = questionsForConcept.find((q: any) => q.academic_year)?.academic_year;
 
     // Collect distinct exams where questions of this concept appear
     const examMap = new Map<string, { id: string; title: string; year_name?: string }>();
     questionsForConcept.forEach((q) => {
-      q.exams?.forEach((e) => {
-        if (!examMap.has(e.id)) {
-          const year = store.academic_years.find((y) => y.id === e.academic_year_id);
-          examMap.set(e.id, {
-            id: e.id,
-            title: e.title,
-            year_name: year?.name,
-          });
+      const examIds = q.exam_ids || q.exams?.map((e) => e.id) || [];
+      examIds.forEach((eid) => {
+        if (!examMap.has(eid)) {
+          const ex = examLookup.get(eid) || q.exams?.find((e) => e.id === eid);
+          if (ex) {
+            const y = ex.academic_year_id ? yearLookup.get(ex.academic_year_id) : undefined;
+            examMap.set(eid, {
+              id: eid,
+              title: ex.title,
+              year_name: y?.name,
+            });
+          }
         }
       });
     });
@@ -1518,15 +1624,15 @@ export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
 
     stats.push({
       concept_id: conceptId,
-      concept_name: conceptObj.name,
-      subject_id: subjectObj?.id,
-      subject_name: subjectObj?.name || 'Integrated Medicine',
-      module_id: moduleObj?.id,
-      module_name: moduleObj?.name,
-      academic_year_id: yearObj?.id,
-      academic_year_name: yearObj?.name,
-      chapter_id: chapterObj?.id,
-      chapter_name: chapterObj?.name || 'General Concepts',
+      concept_name: conceptName,
+      subject_id: subjectObj?.id || fallbackSubject?.id || questionsForConcept[0]?.subject_id,
+      subject_name: subjectObj?.name || fallbackSubject?.name || 'Integrated Medicine',
+      module_id: moduleObj?.id || fallbackModule?.id || questionsForConcept[0]?.module_id,
+      module_name: moduleObj?.name || fallbackModule?.name,
+      academic_year_id: yearObj?.id || fallbackYear?.id || questionsForConcept[0]?.academic_year_id,
+      academic_year_name: yearObj?.name || fallbackYear?.name,
+      chapter_id: chapterObj?.id || fallbackChapter?.id || questionsForConcept[0]?.chapter_id,
+      chapter_name: chapterObj?.name || fallbackChapter?.name || 'General Concepts',
       appearance_count: questionsForConcept.length,
       exams: examsList,
       questions: questionsForConcept,
@@ -1539,13 +1645,34 @@ export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
 
 // ---------------- Weakness Analysis -----------------
 export async function getWeaknessMetrics(studentId = 'default_student'): Promise<WeaknessMetric[]> {
-  const store = readLocalStore();
-  const allQuestions = await getQuestions();
+  const [allQuestions, allConcepts, allChapters, allSubjects] = await Promise.all([
+    getQuestions(),
+    getConcepts(),
+    getChapters(),
+    getSubjects(),
+  ]);
 
-  // Find all answers by student
-  const studentAttempts = store.student_attempts.filter((a) => a.student_id === studentId);
-  const attemptIds = studentAttempts.map((a) => a.id);
-  const relevantAnswers = store.student_answers.filter((ans) => attemptIds.includes(ans.attempt_id));
+  let relevantAnswers: StudentAnswer[] = [];
+
+  if (supabase) {
+    try {
+      const { data: attempts } = await supabase.from('student_attempts').select('id').eq('student_id', studentId);
+      if (attempts && attempts.length > 0) {
+        const attemptIds = attempts.map((a) => a.id);
+        const { data: answers } = await supabase.from('student_answers').select('*').in('attempt_id', attemptIds);
+        if (answers) relevantAnswers = answers;
+      }
+    } catch (e) {
+      console.warn('Error fetching weakness metrics from Supabase:', e);
+    }
+  }
+
+  if (relevantAnswers.length === 0) {
+    const store = readLocalStore();
+    const studentAttempts = store.student_attempts.filter((a) => a.student_id === studentId);
+    const attemptIds = studentAttempts.map((a) => a.id);
+    relevantAnswers = store.student_answers.filter((ans) => attemptIds.includes(ans.attempt_id));
+  }
 
   // Tally by concept
   const conceptStats = new Map<
@@ -1567,12 +1694,15 @@ export async function getWeaknessMetrics(studentId = 'default_student'): Promise
     conceptStats.set(q.concept_id, current);
   });
 
+  const chapterMap = new Map(allChapters.map((c) => [c.id, c]));
+  const subjectMap = new Map(allSubjects.map((s) => [s.id, s]));
+
   const metrics: WeaknessMetric[] = [];
 
-  store.concepts.forEach((concept) => {
+  allConcepts.forEach((concept) => {
     const stat = conceptStats.get(concept.id);
-    const chapter = store.chapters.find((ch) => ch.id === concept.chapter_id);
-    const subject = chapter ? store.subjects.find((s) => s.id === chapter.subject_id) : undefined;
+    const chapter = chapterMap.get(concept.chapter_id);
+    const subject = chapter ? subjectMap.get(chapter.subject_id) : undefined;
 
     const total = stat?.total || 0;
     const correct = stat?.correct || 0;
@@ -1608,29 +1738,36 @@ export async function searchContent(query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return { exams: [], modules: [], subjects: [], chapters: [], concepts: [], questions: [] };
 
-  const store = readLocalStore();
+  const [allExams, allModules, allSubjects, allChapters, allConcepts, allQuestions] = await Promise.all([
+    getExams(),
+    getModules(),
+    getSubjects(),
+    getChapters(),
+    getConcepts(),
+    getQuestions(),
+  ]);
 
-  const exams = store.exams
+  const exams = allExams
     .filter((e) => e.title.toLowerCase().includes(q) || (e.instructions && e.instructions.toLowerCase().includes(q)))
     .slice(0, 5);
 
-  const modules = store.modules
+  const modules = allModules
     .filter((m) => m.name.toLowerCase().includes(q) || m.code.toLowerCase().includes(q))
     .slice(0, 5);
 
-  const subjects = store.subjects
+  const subjects = allSubjects
     .filter((s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
     .slice(0, 5);
 
-  const chapters = store.chapters
+  const chapters = allChapters
     .filter((c) => c.name.toLowerCase().includes(q))
     .slice(0, 5);
 
-  const concepts = store.concepts
+  const concepts = allConcepts
     .filter((c) => c.name.toLowerCase().includes(q) || (c.code && c.code.toLowerCase().includes(q)))
     .slice(0, 5);
 
-  const questions = store.questions
+  const questions = allQuestions
     .filter((item) => item.question_text.toLowerCase().includes(q) || (item.clinical_vignette && item.clinical_vignette.toLowerCase().includes(q)))
     .slice(0, 5);
 
@@ -1639,27 +1776,60 @@ export async function searchContent(query: string) {
 
 // ---------------- Stats -----------------
 export async function getPlatformStats(studentId = 'default_student') {
-  const store = readLocalStore();
-  const attempts = store.student_attempts.filter((a) => a.student_id === studentId);
-  const questionsAnswered = store.student_answers.length;
-  const correctCount = store.student_answers.filter((ans) => ans.is_correct).length;
+  const [allYears, allModules, allSubjects, allChapters, allConcepts, allExams, allQuestions] = await Promise.all([
+    getAcademicYears(),
+    getModules(),
+    getSubjects(),
+    getChapters(),
+    getConcepts(),
+    getExams(),
+    getQuestions(),
+  ]);
+
+  let studentAttempts: StudentAttempt[] = [];
+  let studentAnswers: StudentAnswer[] = [];
+
+  if (supabase) {
+    try {
+      const { data: attempts } = await supabase.from('student_attempts').select('*').eq('student_id', studentId);
+      if (attempts && attempts.length > 0) {
+        studentAttempts = attempts;
+        const attemptIds = attempts.map((a) => a.id);
+        const { data: answers } = await supabase.from('student_answers').select('*').in('attempt_id', attemptIds);
+        if (answers) studentAnswers = answers;
+      }
+    } catch (e) {
+      console.warn('Error fetching platform student stats from Supabase:', e);
+    }
+  }
+
+  if (studentAttempts.length === 0) {
+    const store = readLocalStore();
+    studentAttempts = store.student_attempts.filter((a) => a.student_id === studentId);
+    studentAnswers = store.student_answers.filter((ans) =>
+      studentAttempts.some((a) => a.id === ans.attempt_id)
+    );
+  }
+
+  const questionsAnswered = studentAnswers.length;
+  const correctCount = studentAnswers.filter((ans) => ans.is_correct).length;
   const overallAccuracy = questionsAnswered > 0 ? Math.round((correctCount / questionsAnswered) * 100) : 0;
-  const bookmarksCount = store.bookmarks.filter((b) => b.student_id === studentId).length;
+  const bookmarksCount = 0;
 
   return {
-    total_years: store.academic_years.length,
-    total_modules: store.modules.length,
-    total_subjects: store.subjects.length,
-    total_chapters: store.chapters.length,
-    total_concepts: store.concepts.length,
-    total_exams: store.exams.length,
-    total_questions: store.questions.length,
-    completed_exams: attempts.filter((a) => a.mode === 'complete_exam').length,
-    total_attempts: attempts.length,
+    total_years: allYears.length,
+    total_modules: allModules.length,
+    total_subjects: allSubjects.length,
+    total_chapters: allChapters.length,
+    total_concepts: allConcepts.length,
+    total_exams: allExams.length,
+    total_questions: allQuestions.length,
+    completed_exams: studentAttempts.filter((a) => a.mode === 'complete_exam').length,
+    total_attempts: studentAttempts.length,
     questions_answered: questionsAnswered,
     overall_accuracy: overallAccuracy,
     bookmarks_count: bookmarksCount,
-    recent_attempts: attempts.slice(0, 5),
+    recent_attempts: studentAttempts.slice(0, 5),
   };
 }
 
