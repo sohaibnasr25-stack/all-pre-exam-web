@@ -69,7 +69,22 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { id, ...payload } = await req.json();
+    const body = await req.json();
+
+    // Support batch update of questions (used by whole exam editor)
+    if (body.batch && Array.isArray(body.batch)) {
+      const updatedList = [];
+      for (const item of body.batch) {
+        if (item.id) {
+          const { id, ...payload } = item;
+          const updated = await updateQuestion(id, payload);
+          if (updated) updatedList.push(updated);
+        }
+      }
+      return NextResponse.json({ success: true, count: updatedList.length, data: updatedList });
+    }
+
+    const { id, ...payload } = body;
     if (!id) {
       return NextResponse.json({ success: false, message: 'ID is required' }, { status: 400 });
     }

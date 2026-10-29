@@ -29,6 +29,8 @@ import {
   Search,
   CheckSquare,
   Square,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   AcademicYear,
@@ -65,6 +67,37 @@ interface QuestionFormState {
   exam_ids: string[];
   answer_choices: { choice_letter: string; choice_text: string; is_correct: boolean }[];
   explanations: FormExplanation[];
+}
+
+export interface EditableExamQuestion {
+  id: string;
+  question_text: string;
+  clinical_vignette?: string;
+  academic_year_id?: string;
+  module_id?: string;
+  subject_id?: string;
+  chapter_id?: string;
+  concept_id?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  order_index?: number;
+  answer_choices: {
+    id?: string;
+    choice_letter: string;
+    choice_text: string;
+    is_correct: boolean;
+    order_index?: number;
+  }[];
+  explanations: {
+    id?: string;
+    choice_letter: string;
+    explanation_text: string;
+    is_why_correct?: boolean;
+    is_why_incorrect?: boolean;
+    source_document?: string;
+    source_page?: string;
+    source_reference?: string;
+  }[];
+  isExpanded?: boolean;
 }
 
 export default function AdminDashboardPage() {
@@ -108,8 +141,12 @@ export default function AdminDashboardPage() {
   const [examModalOpen, setExamModalOpen] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [selectedExamQuestionIds, setSelectedExamQuestionIds] = useState<string[]>([]);
+  const [examQuestionsList, setExamQuestionsList] = useState<EditableExamQuestion[]>([]);
+  const [examActiveTab, setExamActiveTab] = useState<'questions' | 'settings' | 'link_more'>('questions');
+  const [savingExamQuestions, setSavingExamQuestions] = useState(false);
   const [examQuestionSearch, setExamQuestionSearch] = useState('');
   const [examQuestionFilterModule, setExamQuestionFilterModule] = useState('all');
+  const [examQuestionFilterSubject, setExamQuestionFilterSubject] = useState('all');
   const [examForm, setExamForm] = useState({
     title: '',
     academic_year_id: '',
@@ -882,9 +919,12 @@ D) Normal myocardium with subtle wavy fibers only
                   passing_score: 70,
                   instructions: '',
                 });
+                setExamQuestionsList([]);
                 setSelectedExamQuestionIds([]);
                 setExamQuestionSearch('');
                 setExamQuestionFilterModule('all');
+                setExamQuestionFilterSubject('all');
+                setExamActiveTab('settings');
                 setExamModalOpen(true);
               }}
               className="btn btn-primary"
@@ -945,13 +985,65 @@ D) Normal myocardium with subtle wavy fibers only
                         exam.question_ids.forEach((qid) => linkedIds.add(qid));
                       }
                       questions.forEach((q) => {
-                        if (q.exam_ids?.includes(exam.id)) {
+                        if (q.exam_ids?.includes(exam.id) || (q as any).exam_questions?.some((eq: any) => eq.exam_id === exam.id)) {
                           linkedIds.add(q.id);
                         }
                       });
+
+                      const standardLetters = ['A', 'B', 'C', 'D'];
+                      const linkedQuestions: EditableExamQuestion[] = questions
+                        .filter((q) => linkedIds.has(q.id))
+                        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+                        .map((q, idx) => {
+                          const choices = standardLetters.map((l, lIdx) => {
+                            const c = q.answer_choices?.find((ac) => ac.choice_letter?.toUpperCase() === l);
+                            return {
+                              id: c?.id,
+                              choice_letter: l,
+                              choice_text: c?.choice_text || '',
+                              is_correct: c?.is_correct ?? false,
+                              order_index: lIdx + 1,
+                            };
+                          });
+                          if (!choices.some((c) => c.is_correct)) choices[0].is_correct = true;
+
+                          const explanations = standardLetters.map((l, lIdx) => {
+                            const exp = q.explanations?.find((e) => e.choice_letter?.toUpperCase() === l);
+                            return {
+                              id: exp?.id,
+                              choice_letter: l,
+                              explanation_text: exp?.explanation_text || '',
+                              is_why_correct: choices[lIdx].is_correct,
+                              is_why_incorrect: !choices[lIdx].is_correct,
+                              source_document: exp?.source_document || '',
+                              source_page: exp?.source_page || '',
+                              source_reference: exp?.source_reference || '',
+                            };
+                          });
+
+                          return {
+                            id: q.id,
+                            question_text: q.question_text || '',
+                            clinical_vignette: q.clinical_vignette || '',
+                            academic_year_id: q.academic_year_id || exam.academic_year_id || '',
+                            module_id: q.module_id || exam.module_id || '',
+                            subject_id: q.subject_id || '',
+                            chapter_id: q.chapter_id || '',
+                            concept_id: q.concept_id || '',
+                            difficulty: q.difficulty || 'medium',
+                            order_index: idx + 1,
+                            answer_choices: choices,
+                            explanations: explanations,
+                            isExpanded: idx < 2,
+                          };
+                        });
+
+                      setExamQuestionsList(linkedQuestions);
                       setSelectedExamQuestionIds(Array.from(linkedIds));
                       setExamQuestionSearch('');
                       setExamQuestionFilterModule(exam.module_id || 'all');
+                      setExamQuestionFilterSubject('all');
+                      setExamActiveTab('questions');
                       setExamModalOpen(true);
                     }}
                     className="btn btn-secondary btn-sm"
@@ -2191,7 +2283,7 @@ C) Choice C"
           <div
             className="glass-panel animate-fade-in"
             style={{
-              maxWidth: '820px',
+              maxWidth: '1050px',
               width: '100%',
               maxHeight: '92vh',
               overflowY: 'auto',
@@ -2201,19 +2293,51 @@ C) Choice C"
               border: '1px solid var(--border-highlight)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
               <div>
-                <h3 style={{ fontSize: '1.35rem', fontWeight: 800 }}>
-                  {editingExamId ? 'تعديل بيانات الامتحان والأسئلة المرتبطة' : 'إنشاء امتحان جديد'}
-                </h3>
-                <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                  {editingExamId
-                    ? 'تعديل اسم الامتحان، المدة، درجة النجاح، وتحديد أو فك الأسئلة المرتبطة به دفعة واحدة'
-                    : 'قم بضبط إعدادات الامتحان وتحديد تصنيفه وقائمة الأسئلة'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800 }}>
+                    {editingExamId ? `تعديل شامل للامتحان: ${examForm.title || ''}` : 'إنشاء امتحان طبي جديد'}
+                  </h3>
+                  <span className="badge badge-teal">{examQuestionsList.length} سؤال مرتبط</span>
+                </div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  يمكنك تعديل بيانات الامتحان، وإدارة جميع الأسئلة بخصائصها الكاملة (نص السؤال، الاختيارات، الإجابة الصحيحة، والتفسيرات).
                 </div>
               </div>
               <button onClick={() => setExamModalOpen(false)} style={{ color: 'var(--text-dim)', padding: '0.5rem', cursor: 'pointer' }}>
                 <X size={20} />
+              </button>
+            </div>
+
+            {/* Navigation Tabs within Exam Modal */}
+            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '1.5rem', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setExamActiveTab('questions')}
+                className={`btn btn-sm ${examActiveTab === 'questions' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ gap: '0.4rem', fontSize: '0.85rem' }}
+              >
+                <FileQuestion size={15} />
+                <span>أسئلة الامتحان والتعديل الشامل ({examQuestionsList.length} سؤال)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExamActiveTab('settings')}
+                className={`btn btn-sm ${examActiveTab === 'settings' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ gap: '0.4rem', fontSize: '0.85rem' }}
+              >
+                <Layers size={15} />
+                <span>بيانات وإعدادات الامتحان الأساسية</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExamActiveTab('link_more')}
+                className={`btn btn-sm ${examActiveTab === 'link_more' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ gap: '0.4rem', fontSize: '0.85rem' }}
+              >
+                <Plus size={15} />
+                <span>إضافة أسئلة من بنك الأسئلة</span>
               </button>
             </div>
 
@@ -2229,6 +2353,11 @@ C) Choice C"
                   return;
                 }
                 try {
+                  setSavingExamQuestions(true);
+                  const currentQuestionIds = examQuestionsList.map((q) => q.id);
+                  let targetExamId = editingExamId;
+
+                  // 1. Update/Create Exam
                   if (editingExamId) {
                     const res = await adminFetch('/api/exams', {
                       method: 'PUT',
@@ -2236,371 +2365,911 @@ C) Choice C"
                       body: JSON.stringify({
                         id: editingExamId,
                         ...examForm,
-                        question_ids: selectedExamQuestionIds,
+                        question_ids: currentQuestionIds,
                       }),
                     });
                     const d = await res.json();
-                    if (d.success) {
-                      showFeedback('success', `تم تحديث الامتحان "${examForm.title}" بنجاح مع ربط ${selectedExamQuestionIds.length} سؤال!`);
-                      setExamModalOpen(false);
-                      refreshAllData();
-                    } else {
-                      showFeedback('error', d.message || d.error || 'Failed to update exam');
-                    }
+                    if (!d.success) throw new Error(d.message || d.error || 'Failed to update exam');
                   } else {
                     const res = await adminFetch('/api/exams', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         ...examForm,
-                        question_ids: selectedExamQuestionIds,
+                        question_ids: currentQuestionIds,
                       }),
                     });
                     const d = await res.json();
-                    if (d.success) {
-                      showFeedback('success', `تم إنشاء الامتحان "${examForm.title}" بنجاح مع ربط ${selectedExamQuestionIds.length} سؤال!`);
-                      setExamModalOpen(false);
-                      refreshAllData();
-                    } else {
-                      showFeedback('error', d.message || d.error || 'Failed to create exam');
-                    }
+                    if (!d.success) throw new Error(d.message || d.error || 'Failed to create exam');
+                    targetExamId = d.data?.id;
                   }
+
+                  // 2. Batch save all updated questions
+                  if (examQuestionsList.length > 0) {
+                    const batchPayload = examQuestionsList.map((q, idx) => ({
+                      id: q.id,
+                      question: {
+                        question_text: q.question_text,
+                        clinical_vignette: q.clinical_vignette,
+                        academic_year_id: q.academic_year_id || examForm.academic_year_id,
+                        module_id: q.module_id || examForm.module_id,
+                        subject_id: q.subject_id,
+                        chapter_id: q.chapter_id,
+                        concept_id: q.concept_id,
+                        difficulty: q.difficulty || 'medium',
+                        order_index: idx + 1,
+                      },
+                      answer_choices: q.answer_choices.map((c, cIdx) => ({
+                        id: c.id,
+                        choice_letter: c.choice_letter,
+                        choice_text: c.choice_text,
+                        is_correct: c.is_correct,
+                        order_index: cIdx + 1,
+                      })),
+                      explanations: q.explanations.map((exp) => ({
+                        id: exp.id,
+                        choice_letter: exp.choice_letter,
+                        explanation_text: exp.explanation_text,
+                        is_why_correct: exp.is_why_correct,
+                        is_why_incorrect: exp.is_why_incorrect,
+                        source_document: exp.source_document || 'Core Medical Literature',
+                        source_page: exp.source_page || '',
+                        source_reference: exp.source_reference || '',
+                      })),
+                      exam_ids: targetExamId ? [targetExamId] : [],
+                    }));
+
+                    const qRes = await adminFetch('/api/questions', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ batch: batchPayload }),
+                    });
+                    const qData = await qRes.json();
+                    if (!qData.success) throw new Error(qData.message || qData.error || 'Failed to update questions batch');
+                  }
+
+                  showFeedback('success', `تم حفظ الامتحان "${examForm.title}" وجميع أسئلته (${examQuestionsList.length} سؤال) بنجاح!`);
+                  setExamModalOpen(false);
+                  refreshAllData();
                 } catch (err) {
                   showFeedback('error', String(err));
+                } finally {
+                  setSavingExamQuestions(false);
                 }
               }}
               style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
             >
-              <div className="form-group">
-                <label className="form-label">اسم الامتحان (Exam Title) *</label>
-                <input
-                  type="text"
-                  value={examForm.title}
-                  onChange={(e) => setExamForm({ ...examForm, title: e.target.value })}
-                  placeholder="e.g. Cardiovascular System End Module Exam 2026"
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              {/* Exam Type Selection: END MODULE vs FINAL */}
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
-                  نوع الامتحان (Exam Classification) *
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setExamForm({ ...examForm, exam_type: 'end_module' })}
+              {/* TAB 1: FULL EXAM QUESTIONS LIST & INLINE EDITOR */}
+              {examActiveTab === 'questions' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Action Toolbar */}
+                  <div
                     style={{
-                      padding: '0.9rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: examForm.exam_type === 'end_module' ? '2px solid #a855f7' : '1px solid var(--border-subtle)',
-                      background: examForm.exam_type === 'end_module' ? 'rgba(168, 85, 247, 0.15)' : 'var(--bg-surface-elevated)',
-                      color: examForm.exam_type === 'end_module' ? '#c084fc' : 'var(--text-muted)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
                       display: 'flex',
-                      flexDirection: 'column',
+                      justifyContent: 'space-between',
                       alignItems: 'center',
-                      gap: '0.25rem',
-                      transition: 'all 0.2s ease',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      padding: '0.85rem 1rem',
+                      background: 'var(--bg-surface-elevated)',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-subtle)',
                     }}
                   >
-                    <span style={{ fontSize: '1rem' }}>END MODULE</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>امتحان نهاية الموديول</span>
-                  </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: '260px' }}>
+                      <Search size={16} style={{ color: 'var(--text-dim)' }} />
+                      <input
+                        type="text"
+                        value={examQuestionSearch}
+                        onChange={(e) => setExamQuestionSearch(e.target.value)}
+                        placeholder="ابحث في نص السؤال أو المفهوم أو المادة داخل الامتحان..."
+                        className="form-input"
+                        style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', flex: 1 }}
+                      />
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setExamForm({ ...examForm, exam_type: 'final' })}
-                    style={{
-                      padding: '0.9rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: examForm.exam_type === 'final' ? '2px solid #06b6d4' : '1px solid var(--border-subtle)',
-                      background: examForm.exam_type === 'final' ? 'rgba(6, 182, 212, 0.15)' : 'var(--bg-surface-elevated)',
-                      color: examForm.exam_type === 'final' ? '#38bdf8' : 'var(--text-muted)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    <span style={{ fontSize: '1rem' }}>FINAL</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>الامتحان النهائي الشامل</span>
-                  </button>
-                </div>
-              </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <select
+                        value={examQuestionFilterSubject}
+                        onChange={(e) => setExamQuestionFilterSubject(e.target.value)}
+                        className="form-select"
+                        style={{ fontSize: '0.82rem', padding: '0.4rem 0.65rem' }}
+                      >
+                        <option value="all">كل المواد (All Subjects)</option>
+                        {subjects.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">السنة الدراسية (Academic Year) *</label>
-                  <select
-                    value={examForm.academic_year_id}
-                    onChange={(e) => setExamForm({ ...examForm, academic_year_id: e.target.value })}
-                    className="form-select"
-                    required
-                  >
-                    <option value="">Select Year...</option>
-                    {academicYears.map((y) => (
-                      <option key={y.id} value={y.id}>{y.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">الموديول (Module) *</label>
-                  <select
-                    value={examForm.module_id}
-                    onChange={(e) => setExamForm({ ...examForm, module_id: e.target.value })}
-                    className="form-select"
-                    required
-                  >
-                    <option value="">Select Module...</option>
-                    {modules
-                      .filter((m) => !examForm.academic_year_id || m.academic_year_id === examForm.academic_year_id)
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">مدة الامتحان بالدقائق (Duration Minutes)</label>
-                  <input
-                    type="number"
-                    value={examForm.duration_minutes}
-                    onChange={(e) => setExamForm({ ...examForm, duration_minutes: parseInt(e.target.value, 10) || 60 })}
-                    className="form-input"
-                    min="1"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">درجة النجاح % (Passing Score)</label>
-                  <input
-                    type="number"
-                    value={examForm.passing_score}
-                    onChange={(e) => setExamForm({ ...examForm, passing_score: parseInt(e.target.value, 10) || 70 })}
-                    className="form-input"
-                    min="1"
-                    max="100"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">تعليمات الامتحان (Instructions)</label>
-                <textarea
-                  value={examForm.instructions}
-                  onChange={(e) => setExamForm({ ...examForm, instructions: e.target.value })}
-                  placeholder="Instructions for students taking this exam..."
-                  className="form-textarea"
-                  style={{ minHeight: '60px' }}
-                />
-              </div>
-
-              {/* ========================================================== */}
-              {/* BULK QUESTION SELECTOR / ASSIGNMENT SECTION                */}
-              {/* ========================================================== */}
-              <div
-                style={{
-                  background: 'var(--bg-surface-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '1.25rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.85rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div>
-                    <label style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span>إدارة وربط أسئلة الامتحان دفعة واحدة</span>
-                      <span className="badge badge-teal">{selectedExamQuestionIds.length} سؤال محدد</span>
-                    </label>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      حدد أو ألغِ تحديد الأسئلة التي يجب أن يتضمنها هذا الامتحان
+                      <button
+                        type="button"
+                        onClick={() => setExamQuestionsList((prev) => prev.map((q) => ({ ...q, isExpanded: true })))}
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: '0.78rem' }}
+                      >
+                        توسيع الكل
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExamQuestionsList((prev) => prev.map((q) => ({ ...q, isExpanded: false })))}
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: '0.78rem' }}
+                      >
+                        طي الكل
+                      </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const filtered = questions.filter((q) => {
-                          if (examQuestionFilterModule !== 'all' && q.module_id !== examQuestionFilterModule) return false;
+                  {/* List of Questions with Full Inline Editors */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '55vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                    {examQuestionsList.length === 0 ? (
+                      <div style={{ padding: '3rem', textAlign: 'center', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-subtle)' }}>
+                        <FileQuestion size={40} style={{ color: 'var(--text-dim)', margin: '0 auto 0.75rem auto' }} />
+                        <h4 style={{ fontWeight: 700, marginBottom: '0.35rem' }}>لا توجد أسئلة مرتبطة بهذا الامتحان بعد</h4>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                          انتقل إلى تبويب "إضافة أسئلة من بنك الأسئلة" لتحديد الأسئلة وإدراجها فوراً.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setExamActiveTab('link_more')}
+                          className="btn btn-primary btn-sm"
+                        >
+                          إضافة أسئلة من بنك الأسئلة
+                        </button>
+                      </div>
+                    ) : (
+                      examQuestionsList
+                        .filter((q) => {
+                          if (examQuestionFilterSubject !== 'all' && q.subject_id !== examQuestionFilterSubject) return false;
                           if (examQuestionSearch.trim()) {
                             const term = examQuestionSearch.trim().toLowerCase();
+                            const subName = subjects.find((s) => s.id === q.subject_id)?.name?.toLowerCase() || '';
+                            const concName = concepts.find((c) => c.id === q.concept_id)?.name?.toLowerCase() || '';
                             return (
                               q.question_text?.toLowerCase().includes(term) ||
-                              q.subject?.name?.toLowerCase().includes(term) ||
-                              q.chapter?.name?.toLowerCase().includes(term) ||
-                              q.concept?.name?.toLowerCase().includes(term)
+                              subName.includes(term) ||
+                              concName.includes(term)
                             );
                           }
                           return true;
-                        });
-                        const newSet = new Set(selectedExamQuestionIds);
-                        filtered.forEach((q) => newSet.add(q.id));
-                        setSelectedExamQuestionIds(Array.from(newSet));
-                      }}
-                      className="btn btn-secondary btn-sm"
-                      style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
-                    >
-                      تحديد كل المصفى
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedExamQuestionIds([])}
-                      className="btn btn-secondary btn-sm"
-                      style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', color: '#f87171' }}
-                    >
-                      إلغاء تحديد الكل
-                    </button>
+                        })
+                        .map((q) => {
+                          const originalIdx = examQuestionsList.findIndex((item) => item.id === q.id);
+                          const correctChoice = q.answer_choices?.find((c) => c.is_correct);
+                          const qSubject = subjects.find((s) => s.id === q.subject_id);
+                          const qConcept = concepts.find((c) => c.id === q.concept_id);
+                          const isExpanded = q.isExpanded !== false;
+
+                          return (
+                            <div
+                              key={q.id}
+                              style={{
+                                background: 'var(--bg-surface-elevated)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--border-subtle)',
+                                overflow: 'hidden',
+                                transition: 'border-color 0.15s ease',
+                              }}
+                            >
+                              {/* Question Summary Bar */}
+                              <div
+                                onClick={() => {
+                                  setExamQuestionsList((prev) =>
+                                    prev.map((item, i) => (i === originalIdx ? { ...item, isExpanded: !item.isExpanded } : item))
+                                  );
+                                }}
+                                style={{
+                                  padding: '0.85rem 1.25rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                  background: isExpanded ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
+                                  borderBottom: isExpanded ? '1px solid var(--border-subtle)' : 'none',
+                                  userSelect: 'none',
+                                  gap: '0.75rem',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                                  <span
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '6px',
+                                      background: 'var(--color-primary)',
+                                      color: '#ffffff',
+                                      fontWeight: 800,
+                                      fontSize: '0.82rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    #{originalIdx + 1}
+                                  </span>
+
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                                      {qSubject && (
+                                        <span className="badge badge-purple" style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}>
+                                          {qSubject.name}
+                                        </span>
+                                      )}
+                                      {qConcept && (
+                                        <span className="badge badge-teal" style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}>
+                                          {qConcept.name}
+                                        </span>
+                                      )}
+                                      <span
+                                        className="badge badge-green"
+                                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', fontWeight: 700 }}
+                                      >
+                                        الإجابة الصحيحة: Choice {correctChoice?.choice_letter || 'A'}
+                                      </span>
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: '0.88rem',
+                                        fontWeight: 600,
+                                        color: 'var(--text-main)',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {q.question_text || 'نص السؤال فارغ...'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                  <button
+                                    type="button"
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      if (confirm(`هل أنت متأكد من إزالة السؤال #${originalIdx + 1} من هذا الامتحان؟`)) {
+                                        setExamQuestionsList((prev) => prev.filter((_, i) => i !== originalIdx));
+                                        setSelectedExamQuestionIds((prev) => prev.filter((id) => id !== q.id));
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '0.35rem',
+                                      color: 'var(--text-dim)',
+                                      borderRadius: '4px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                    }}
+                                    title="إزالة السؤال من هذا الامتحان"
+                                  >
+                                    <Trash2 size={15} color="#fb7185" />
+                                  </button>
+
+                                  <div style={{ color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }}>
+                                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Question Full Properties Editor (Expanded View) */}
+                              {isExpanded && (
+                                <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-surface)' }}>
+                                  {/* Hierarchy Dropdowns: Subject, Chapter, Concept */}
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontSize: '0.78rem' }}>المادة (Subject)</label>
+                                      <select
+                                        value={q.subject_id || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setExamQuestionsList((prev) =>
+                                            prev.map((item, i) => (i === originalIdx ? { ...item, subject_id: val } : item))
+                                          );
+                                        }}
+                                        className="form-select"
+                                        style={{ fontSize: '0.82rem' }}
+                                      >
+                                        <option value="">اختر المادة...</option>
+                                        {subjects.map((s) => (
+                                          <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontSize: '0.78rem' }}>الشابتر (Chapter)</label>
+                                      <select
+                                        value={q.chapter_id || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setExamQuestionsList((prev) =>
+                                            prev.map((item, i) => (i === originalIdx ? { ...item, chapter_id: val } : item))
+                                          );
+                                        }}
+                                        className="form-select"
+                                        style={{ fontSize: '0.82rem' }}
+                                      >
+                                        <option value="">اختر الشابتر...</option>
+                                        {chapters
+                                          .filter((c) => !q.subject_id || c.subject_id === q.subject_id)
+                                          .map((c) => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                          ))}
+                                      </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontSize: '0.78rem' }}>المفهوم (Concept)</label>
+                                      <select
+                                        value={q.concept_id || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setExamQuestionsList((prev) =>
+                                            prev.map((item, i) => (i === originalIdx ? { ...item, concept_id: val } : item))
+                                          );
+                                        }}
+                                        className="form-select"
+                                        style={{ fontSize: '0.82rem' }}
+                                      >
+                                        <option value="">اختر المفهوم...</option>
+                                        {concepts
+                                          .filter((con) => !q.chapter_id || con.chapter_id === q.chapter_id)
+                                          .map((con) => (
+                                            <option key={con.id} value={con.id}>{con.name}</option>
+                                          ))}
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  {/* Clinical Case Vignette (Optional) */}
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                                      الحالة السريرية (Clinical Case Vignette - Optional)
+                                    </label>
+                                    <textarea
+                                      value={q.clinical_vignette || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setExamQuestionsList((prev) =>
+                                          prev.map((item, i) => (i === originalIdx ? { ...item, clinical_vignette: val } : item))
+                                        );
+                                      }}
+                                      placeholder="A 55-year-old male presents with..."
+                                      className="form-textarea"
+                                      style={{ minHeight: '50px', fontSize: '0.85rem' }}
+                                    />
+                                  </div>
+
+                                  {/* Main Question Stem */}
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                                      نص السؤال (Question Stem Text) *
+                                    </label>
+                                    <textarea
+                                      value={q.question_text}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setExamQuestionsList((prev) =>
+                                          prev.map((item, i) => (i === originalIdx ? { ...item, question_text: val } : item))
+                                        );
+                                      }}
+                                      placeholder="نص السؤال الطبي..."
+                                      className="form-textarea"
+                                      style={{ minHeight: '65px', fontSize: '0.9rem' }}
+                                      required
+                                    />
+                                  </div>
+
+                                  {/* Answer Choices & Per-Choice Explanations */}
+                                  <div>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.65rem', color: '#38bdf8' }}>
+                                      الاختيارات الأربعة وتحديد الإجابة الصحيحة وشرح كل اختيار
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                      {q.answer_choices.map((choice, cIdx) => {
+                                        const expl = q.explanations[cIdx] || {
+                                          explanation_text: '',
+                                          source_document: '',
+                                          source_page: '',
+                                          source_reference: '',
+                                        };
+
+                                        return (
+                                          <div
+                                            key={choice.choice_letter}
+                                            style={{
+                                              background: 'var(--bg-surface-elevated)',
+                                              padding: '1rem',
+                                              borderRadius: 'var(--radius-md)',
+                                              border: choice.is_correct ? '1.5px solid #10b981' : '1px solid var(--border-subtle)',
+                                            }}
+                                          >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.6rem' }}>
+                                              <span
+                                                style={{
+                                                  width: '28px',
+                                                  height: '28px',
+                                                  borderRadius: '6px',
+                                                  background: choice.is_correct ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                                                  color: '#ffffff',
+                                                  fontWeight: 800,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  flexShrink: 0,
+                                                }}
+                                              >
+                                                {choice.choice_letter}
+                                              </span>
+
+                                              <input
+                                                type="text"
+                                                value={choice.choice_text}
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  setExamQuestionsList((prev) =>
+                                                    prev.map((item, i) => {
+                                                      if (i !== originalIdx) return item;
+                                                      const choicesCopy = [...item.answer_choices];
+                                                      choicesCopy[cIdx] = { ...choicesCopy[cIdx], choice_text: val };
+                                                      return { ...item, answer_choices: choicesCopy };
+                                                    })
+                                                  );
+                                                }}
+                                                placeholder={`نص الاختيار ${choice.choice_letter}...`}
+                                                className="form-input"
+                                                style={{ flex: 1, fontSize: '0.88rem' }}
+                                                required
+                                              />
+
+                                              {/* Radio button to mark this choice as the correct answer */}
+                                              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', whiteSpace: 'nowrap', padding: '0.3rem 0.6rem', borderRadius: '4px', background: choice.is_correct ? 'rgba(16, 185, 129, 0.15)' : 'transparent' }}>
+                                                <input
+                                                  type="radio"
+                                                  name={`correct_choice_radio_${q.id}`}
+                                                  checked={choice.is_correct}
+                                                  onChange={() => {
+                                                    setExamQuestionsList((prev) =>
+                                                      prev.map((item, i) => {
+                                                        if (i !== originalIdx) return item;
+                                                        const choicesCopy = item.answer_choices.map((c, ci) => ({
+                                                          ...c,
+                                                          is_correct: ci === cIdx,
+                                                        }));
+                                                        const explsCopy = item.explanations.map((exp, ei) => ({
+                                                          ...exp,
+                                                          is_why_correct: ei === cIdx,
+                                                          is_why_incorrect: ei !== cIdx,
+                                                        }));
+                                                        return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
+                                                      })
+                                                    );
+                                                  }}
+                                                />
+                                                <span style={{ color: choice.is_correct ? '#34d399' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.82rem' }}>
+                                                  {choice.is_correct ? 'الإجابة الصحيحة ✓' : 'تحديد كإجابة صحيحة'}
+                                                </span>
+                                              </label>
+                                            </div>
+
+                                            {/* Explanation input for this choice */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                              <label style={{ fontSize: '0.76rem', color: choice.is_correct ? '#34d399' : 'var(--text-dim)', fontWeight: 600 }}>
+                                                {choice.is_correct ? 'تفسير الإجابة الصحيحة (Why Correct)' : `تفسير سبب خطأ الاختيار (${choice.choice_letter})`}
+                                              </label>
+                                              <textarea
+                                                value={expl.explanation_text || ''}
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  setExamQuestionsList((prev) =>
+                                                    prev.map((item, i) => {
+                                                      if (i !== originalIdx) return item;
+                                                      const explsCopy = [...item.explanations];
+                                                      explsCopy[cIdx] = { ...explsCopy[cIdx], explanation_text: val };
+                                                      return { ...item, explanations: explsCopy };
+                                                    })
+                                                  );
+                                                }}
+                                                placeholder={`تفسير الخيار ${choice.choice_letter}...`}
+                                                className="form-textarea"
+                                                style={{ minHeight: '48px', fontSize: '0.84rem' }}
+                                              />
+                                            </div>
+
+                                            {/* Reference / Citations row */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                              <input
+                                                type="text"
+                                                value={expl.source_document || ''}
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  setExamQuestionsList((prev) =>
+                                                    prev.map((item, i) => {
+                                                      if (i !== originalIdx) return item;
+                                                      const explsCopy = [...item.explanations];
+                                                      explsCopy[cIdx] = { ...explsCopy[cIdx], source_document: val };
+                                                      return { ...item, explanations: explsCopy };
+                                                    })
+                                                  );
+                                                }}
+                                                placeholder="المرجع / الكتاب (Textbook Reference)..."
+                                                className="form-input"
+                                                style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                                              />
+                                              <input
+                                                type="text"
+                                                value={expl.source_page || ''}
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  setExamQuestionsList((prev) =>
+                                                    prev.map((item, i) => {
+                                                      if (i !== originalIdx) return item;
+                                                      const explsCopy = [...item.explanations];
+                                                      explsCopy[cIdx] = { ...explsCopy[cIdx], source_page: val };
+                                                      return { ...item, explanations: explsCopy };
+                                                    })
+                                                  );
+                                                }}
+                                                placeholder="الصفحة (Page)..."
+                                                className="form-input"
+                                                style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                                              />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
                   </div>
                 </div>
+              )}
 
-                {/* Filter and search bar inside question selector */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem' }}>
-                  <div style={{ position: 'relative' }}>
-                    <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+              {/* TAB 2: EXAM SETTINGS */}
+              {examActiveTab === 'settings' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">اسم الامتحان (Exam Title) *</label>
                     <input
                       type="text"
-                      value={examQuestionSearch}
-                      onChange={(e) => setExamQuestionSearch(e.target.value)}
-                      placeholder="ابحث في الأسئلة بنص السؤال أو المادة أو المفهوم..."
+                      value={examForm.title}
+                      onChange={(e) => setExamForm({ ...examForm, title: e.target.value })}
+                      placeholder="e.g. Final 2025 Comprehensive Examination"
                       className="form-input"
-                      style={{ paddingLeft: '2.2rem', fontSize: '0.85rem' }}
+                      required
                     />
                   </div>
 
-                  <select
-                    value={examQuestionFilterModule}
-                    onChange={(e) => setExamQuestionFilterModule(e.target.value)}
-                    className="form-select"
-                    style={{ fontSize: '0.85rem', minWidth: '170px' }}
-                  >
-                    <option value="all">كل الموديولات</option>
-                    {modules.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Exam Type Selection: END MODULE vs FINAL */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', display: 'block', marginBottom: '0.5rem' }}>
+                      نوع الامتحان (Exam Classification) *
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExamForm({ ...examForm, exam_type: 'end_module' })}
+                        style={{
+                          padding: '0.9rem',
+                          borderRadius: 'var(--radius-md)',
+                          border: examForm.exam_type === 'end_module' ? '2px solid #a855f7' : '1px solid var(--border-subtle)',
+                          background: examForm.exam_type === 'end_module' ? 'rgba(168, 85, 247, 0.15)' : 'var(--bg-surface-elevated)',
+                          color: examForm.exam_type === 'end_module' ? '#c084fc' : 'var(--text-muted)',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <span style={{ fontSize: '1rem' }}>END MODULE</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>امتحان نهاية الموديول</span>
+                      </button>
 
-                {/* Question List Box */}
-                <div
-                  style={{
-                    maxHeight: '260px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--bg-surface)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  {questions
-                    .filter((q) => {
-                      if (examQuestionFilterModule !== 'all' && q.module_id !== examQuestionFilterModule) return false;
-                      if (examQuestionSearch.trim()) {
-                        const term = examQuestionSearch.trim().toLowerCase();
+                      <button
+                        type="button"
+                        onClick={() => setExamForm({ ...examForm, exam_type: 'final' })}
+                        style={{
+                          padding: '0.9rem',
+                          borderRadius: 'var(--radius-md)',
+                          border: examForm.exam_type === 'final' ? '2px solid #06b6d4' : '1px solid var(--border-subtle)',
+                          background: examForm.exam_type === 'final' ? 'rgba(6, 182, 212, 0.15)' : 'var(--bg-surface-elevated)',
+                          color: examForm.exam_type === 'final' ? '#38bdf8' : 'var(--text-muted)',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <span style={{ fontSize: '1rem' }}>FINAL</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>الامتحان النهائي الشامل</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">السنة الدراسية (Academic Year) *</label>
+                      <select
+                        value={examForm.academic_year_id}
+                        onChange={(e) => setExamForm({ ...examForm, academic_year_id: e.target.value })}
+                        className="form-select"
+                        required
+                      >
+                        <option value="">Select Year...</option>
+                        {academicYears.map((y) => (
+                          <option key={y.id} value={y.id}>{y.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">الموديول (Module) *</label>
+                      <select
+                        value={examForm.module_id}
+                        onChange={(e) => setExamForm({ ...examForm, module_id: e.target.value })}
+                        className="form-select"
+                        required
+                      >
+                        <option value="">Select Module...</option>
+                        {modules
+                          .filter((m) => !examForm.academic_year_id || m.academic_year_id === examForm.academic_year_id)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">مدة الامتحان بالدقائق (Duration Minutes)</label>
+                      <input
+                        type="number"
+                        value={examForm.duration_minutes}
+                        onChange={(e) => setExamForm({ ...examForm, duration_minutes: parseInt(e.target.value, 10) || 60 })}
+                        className="form-input"
+                        min="1"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">درجة النجاح % (Passing Score)</label>
+                      <input
+                        type="number"
+                        value={examForm.passing_score}
+                        onChange={(e) => setExamForm({ ...examForm, passing_score: parseInt(e.target.value, 10) || 70 })}
+                        className="form-input"
+                        min="1"
+                        max="100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">تعليمات الامتحان (Instructions)</label>
+                    <textarea
+                      value={examForm.instructions}
+                      onChange={(e) => setExamForm({ ...examForm, instructions: e.target.value })}
+                      placeholder="Instructions for students taking this exam..."
+                      className="form-textarea"
+                      style={{ minHeight: '70px' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: LINK MORE QUESTIONS FROM BANK */}
+              {examActiveTab === 'link_more' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>إضافة أسئلة من بنك الأسئلة الشامل</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        اضغط على أي سؤال لإضافته مباشرة إلى هذا الامتحان؛ سيظهر في تبويب التعديل الشامل.
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <select
+                        value={examQuestionFilterModule}
+                        onChange={(e) => setExamQuestionFilterModule(e.target.value)}
+                        className="form-select"
+                        style={{ fontSize: '0.82rem', padding: '0.35rem 0.6rem' }}
+                      >
+                        <option value="all">كل الموديولات</option>
+                        {modules.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Question Bank List */}
+                  <div
+                    style={{
+                      maxHeight: '50vh',
+                      overflowY: 'auto',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--bg-surface)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    {questions
+                      .filter((q) => {
+                        if (examQuestionFilterModule !== 'all' && q.module_id !== examQuestionFilterModule) return false;
+                        if (examQuestionSearch.trim()) {
+                          const term = examQuestionSearch.trim().toLowerCase();
+                          return (
+                            q.question_text?.toLowerCase().includes(term) ||
+                            q.subject?.name?.toLowerCase().includes(term) ||
+                            q.concept?.name?.toLowerCase().includes(term)
+                          );
+                        }
+                        return true;
+                      })
+                      .map((q, idx) => {
+                        const isAlreadyInExam = examQuestionsList.some((item) => item.id === q.id);
+
                         return (
-                          q.question_text?.toLowerCase().includes(term) ||
-                          q.subject?.name?.toLowerCase().includes(term) ||
-                          q.chapter?.name?.toLowerCase().includes(term) ||
-                          q.concept?.name?.toLowerCase().includes(term)
-                        );
-                      }
-                      return true;
-                    })
-                    .map((q, idx) => {
-                      const isSelected = selectedExamQuestionIds.includes(q.id);
-                      return (
-                        <div
-                          key={q.id}
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedExamQuestionIds(selectedExamQuestionIds.filter((id) => id !== q.id));
-                            } else {
-                              setSelectedExamQuestionIds([...selectedExamQuestionIds, q.id]);
-                            }
-                          }}
-                          style={{
-                            padding: '0.65rem 0.85rem',
-                            borderBottom: '1px solid var(--border-subtle)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            background: isSelected ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
-                            transition: 'background 0.15s ease',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}} // Handled by container onClick
-                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                          />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-dim)', minWidth: '30px' }}>
-                            #{idx + 1}
-                          </span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
-                              {q.subject?.name && (
-                                <span className="badge badge-purple" style={{ fontSize: '0.68rem', padding: '0.15rem 0.4rem' }}>
-                                  {q.subject.name}
-                                </span>
-                              )}
-                              {q.concept?.name && (
-                                <span className="badge badge-teal" style={{ fontSize: '0.68rem', padding: '0.15rem 0.4rem' }}>
-                                  {q.concept.name}
-                                </span>
-                              )}
+                          <div
+                            key={q.id}
+                            style={{
+                              padding: '0.75rem 1rem',
+                              borderBottom: '1px solid var(--border-subtle)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.75rem',
+                              background: isAlreadyInExam ? 'rgba(6, 182, 212, 0.08)' : 'transparent',
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-dim)' }}>#{idx + 1}</span>
+                                {q.subject?.name && (
+                                  <span className="badge badge-purple" style={{ fontSize: '0.68rem', padding: '0.1rem 0.4rem' }}>
+                                    {q.subject.name}
+                                  </span>
+                                )}
+                                {q.concept?.name && (
+                                  <span className="badge badge-teal" style={{ fontSize: '0.68rem', padding: '0.1rem 0.4rem' }}>
+                                    {q.concept.name}
+                                  </span>
+                                )}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '0.84rem',
+                                  color: 'var(--text-main)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {q.question_text}
+                              </div>
                             </div>
-                            <div
-                              style={{
-                                fontSize: '0.83rem',
-                                color: isSelected ? 'var(--text-main)' : 'var(--text-muted)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {q.question_text}
+
+                            <div>
+                              {isAlreadyInExam ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setExamQuestionsList((prev) => prev.filter((item) => item.id !== q.id));
+                                    setSelectedExamQuestionIds((prev) => prev.filter((id) => id !== q.id));
+                                  }}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem', color: '#fb7185' }}
+                                >
+                                  إزالة من الامتحان
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const standardLetters = ['A', 'B', 'C', 'D'];
+                                    const choices = standardLetters.map((l, lIdx) => {
+                                      const c = q.answer_choices?.find((ac) => ac.choice_letter?.toUpperCase() === l);
+                                      return {
+                                        id: c?.id,
+                                        choice_letter: l,
+                                        choice_text: c?.choice_text || '',
+                                        is_correct: c?.is_correct ?? (lIdx === 0),
+                                        order_index: lIdx + 1,
+                                      };
+                                    });
+                                    if (!choices.some((c) => c.is_correct)) choices[0].is_correct = true;
+
+                                    const explanations = standardLetters.map((l, lIdx) => {
+                                      const exp = q.explanations?.find((e) => e.choice_letter?.toUpperCase() === l);
+                                      return {
+                                        id: exp?.id,
+                                        choice_letter: l,
+                                        explanation_text: exp?.explanation_text || '',
+                                        is_why_correct: choices[lIdx].is_correct,
+                                        is_why_incorrect: !choices[lIdx].is_correct,
+                                        source_document: exp?.source_document || '',
+                                        source_page: exp?.source_page || '',
+                                        source_reference: exp?.source_reference || '',
+                                      };
+                                    });
+
+                                    const newEditable: EditableExamQuestion = {
+                                      id: q.id,
+                                      question_text: q.question_text || '',
+                                      clinical_vignette: q.clinical_vignette || '',
+                                      academic_year_id: q.academic_year_id || examForm.academic_year_id,
+                                      module_id: q.module_id || examForm.module_id,
+                                      subject_id: q.subject_id || '',
+                                      chapter_id: q.chapter_id || '',
+                                      concept_id: q.concept_id || '',
+                                      difficulty: q.difficulty || 'medium',
+                                      order_index: examQuestionsList.length + 1,
+                                      answer_choices: choices,
+                                      explanations: explanations,
+                                      isExpanded: true,
+                                    };
+
+                                    setExamQuestionsList((prev) => [...prev, newEditable]);
+                                    setSelectedExamQuestionIds((prev) => [...prev, q.id]);
+                                  }}
+                                  className="btn btn-primary btn-sm"
+                                  style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem', gap: '0.3rem' }}
+                                >
+                                  <Plus size={13} />
+                                  <span>إضافة للامتحان</span>
+                                </button>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-
-                  {questions.length === 0 && (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      لا توجد أسئلة مسجلة في قاعدة البيانات حالياً
-                    </div>
-                  )}
+                        );
+                      })}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
-                <button type="button" onClick={() => setExamModalOpen(false)} className="btn btn-secondary">
-                  إلغاء (Cancel)
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ gap: '0.4rem' }}>
-                  <Save size={16} />
-                  <span>
-                    {editingExamId
-                      ? `حفظ تعديلات الامتحان (${selectedExamQuestionIds.length} سؤال)`
-                      : `إنشاء الامتحان (${selectedExamQuestionIds.length} سؤال)`}
-                  </span>
-                </button>
+              {/* Bottom Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  إجمالي الأسئلة في هذا الامتحان: <strong style={{ color: '#38bdf8' }}>{examQuestionsList.length}</strong>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button type="button" onClick={() => setExamModalOpen(false)} className="btn btn-secondary">
+                    إلغاء (Cancel)
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingExamQuestions}
+                    className="btn btn-primary"
+                    style={{ gap: '0.4rem' }}
+                  >
+                    <Save size={16} />
+                    <span>
+                      {savingExamQuestions
+                        ? 'جاري حفظ التعديلات...'
+                        : editingExamId
+                        ? `حفظ تعديلات الامتحان والأسئلة (${examQuestionsList.length} سؤال)`
+                        : `إنشاء الامتحان والأسئلة (${examQuestionsList.length} سؤال)`}
+                    </span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

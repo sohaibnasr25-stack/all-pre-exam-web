@@ -36,6 +36,23 @@ interface QuestionCardProps {
   onBookmark: (category: BookmarkCategory, notes?: string, action?: 'toggle' | 'save' | 'remove') => void;
 }
 
+function cleanExplanationText(raw?: string): { labelType: 'correct' | 'incorrect' | 'neutral'; text: string } {
+  if (!raw) return { labelType: 'neutral', text: '' };
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(?:(?:Explanation(?:\s*\([A-Ea-e]\))?|Why Correct|Why Incorrect|التفسير|تفسير|الشرح|شرح)\s*[:—–\-]*\s*(Incorrect|Correct|صحيح|غير صحيح|خطأ)?\s*[:—–\-]*\s*)/i);
+  if (match) {
+    const rawStatus = (match[1] || '').toLowerCase();
+    const isInc = rawStatus === 'incorrect' || rawStatus === 'غير صحيح' || rawStatus === 'خطأ' || /incorrect/i.test(match[0]);
+    const isCor = rawStatus === 'correct' || rawStatus === 'صحيح' || /why correct/i.test(match[0]);
+    const remaining = trimmed.substring(match[0].length).trim();
+    return {
+      labelType: isInc ? 'incorrect' : isCor ? 'correct' : 'neutral',
+      text: remaining || trimmed,
+    };
+  }
+  return { labelType: 'neutral', text: trimmed };
+}
+
 export default function QuestionCard({
   question,
   questionIndex,
@@ -537,27 +554,78 @@ export default function QuestionCard({
               </div>
 
               {/* Individual Per-Choice Explanation (shown when revealed with smooth accordion) */}
-              {shouldRevealExplanations && choiceExplanation && (
-                <div
-                  className="animate-explanation-reveal"
-                  style={{
-                    margin: '0.4rem 0 0.5rem 3.5rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.86rem',
-                    lineHeight: 1.5,
-                    background: choice.is_correct ? 'var(--success-bg)' : 'var(--bg-surface-elevated)',
-                    borderLeft: `3px solid ${choice.is_correct ? 'var(--success)' : 'var(--border-subtle)'}`,
-                    color: 'var(--text-muted)',
-                    border: '1px solid var(--border-subtle)',
-                    borderLeftWidth: '3px',
-                  }}
-                >
-                  <strong style={{ color: choice.is_correct ? 'var(--success)' : 'var(--error)' }}>
-                    {choice.is_correct ? 'Why Correct: ' : 'Why Incorrect: '}
-                  </strong>
-                  {choiceExplanation.explanation_text}
-                </div>
+              {shouldRevealExplanations && (
+                (() => {
+                  if (choiceExplanation && choiceExplanation.explanation_text?.trim()) {
+                    const parsed = cleanExplanationText(choiceExplanation.explanation_text);
+                    const isWhyCorrect = choice.is_correct || parsed.labelType === 'correct';
+
+                    return (
+                      <div
+                        className="animate-explanation-reveal"
+                        style={{
+                          margin: '0.4rem 0 0.5rem 3.5rem',
+                          padding: '0.75rem 1rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.86rem',
+                          lineHeight: 1.5,
+                          background: isWhyCorrect ? 'var(--success-bg)' : 'var(--bg-surface-elevated)',
+                          borderLeft: `3px solid ${isWhyCorrect ? 'var(--success)' : 'var(--border-subtle)'}`,
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border-subtle)',
+                          borderLeftWidth: '3px',
+                        }}
+                      >
+                        <strong style={{ color: isWhyCorrect ? 'var(--success)' : 'var(--error)', marginRight: '0.35rem' }}>
+                          {isWhyCorrect ? 'Why Correct:' : 'Why Incorrect:'}
+                        </strong>
+                        <span>{parsed.text}</span>
+                        {choiceExplanation.source_document && (
+                          <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                            <span>Source: {choiceExplanation.source_document}</span>
+                            {choiceExplanation.source_page && <span> (p. {choiceExplanation.source_page})</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // If student selected this incorrect choice and it lacks a dedicated explanation row
+                  if (isSelected && !choice.is_correct) {
+                    const correctChoiceObj = question.answer_choices.find((c) => c.is_correct);
+                    return (
+                      <div
+                        className="animate-explanation-reveal"
+                        style={{
+                          margin: '0.4rem 0 0.5rem 3.5rem',
+                          padding: '0.75rem 1rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.86rem',
+                          lineHeight: 1.5,
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          borderLeft: '3px solid var(--error)',
+                          color: 'var(--text-main)',
+                        }}
+                      >
+                        <strong style={{ color: 'var(--error)', marginRight: '0.35rem' }}>
+                          Why Incorrect:
+                        </strong>
+                        <span>
+                          Choice {choice.choice_letter} is not the correct answer. The correct answer is Choice {correctChoiceObj?.choice_letter || ''} {correctChoiceObj?.choice_text ? `(${correctChoiceObj.choice_text})` : ''}.
+                        </span>
+                        {mainExplanation?.explanation_text && (
+                          <div style={{ marginTop: '0.45rem', color: 'var(--text-muted)', fontSize: '0.83rem' }}>
+                            <strong>Clinical Rationale: </strong>
+                            {cleanExplanationText(mainExplanation.explanation_text).text}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()
               )}
             </div>
           );
@@ -693,11 +761,50 @@ export default function QuestionCard({
               marginBottom: readMoreExpanded ? '1.25rem' : '0.5rem',
             }}
           >
-            {mainExplanation?.explanation_text || (
-              <span style={{ color: 'var(--text-muted)' }}>
-                The explanation is not available in the provided source files.
-              </span>
-            )}
+            {(() => {
+              const validExpls = question.explanations.filter((e) => e.explanation_text?.trim());
+              if (validExpls.length > 1) {
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {validExpls.map((e) => {
+                      const parsed = cleanExplanationText(e.explanation_text);
+                      const isCorrectChoice = question.answer_choices.find((c) => c.choice_letter === e.choice_letter)?.is_correct;
+                      return (
+                        <div key={e.id || e.choice_letter} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              background: isCorrectChoice ? 'var(--success-bg)' : 'rgba(255, 255, 255, 0.08)',
+                              color: isCorrectChoice ? 'var(--success)' : 'var(--text-muted)',
+                              border: `1px solid ${isCorrectChoice ? 'var(--success)' : 'var(--border-subtle)'}`,
+                              flexShrink: 0,
+                              marginTop: '2px',
+                            }}
+                          >
+                            Choice {e.choice_letter}
+                          </span>
+                          <span style={{ color: 'var(--text-main)' }}>{parsed.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              if (mainExplanation?.explanation_text) {
+                const parsed = cleanExplanationText(mainExplanation.explanation_text);
+                return <div>{parsed.text}</div>;
+              }
+
+              return (
+                <span style={{ color: 'var(--text-muted)' }}>
+                  The explanation is not available in the provided source files.
+                </span>
+              );
+            })()}
           </div>
 
           {/* Expandable Deep Rationale and Academic Sources */}
