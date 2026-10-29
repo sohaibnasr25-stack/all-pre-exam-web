@@ -568,6 +568,7 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
       if (!error && data) {
         return data.map((e: any) => ({
           ...e,
+          exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
           question_count: Array.isArray(e.exam_questions) ? e.exam_questions.length : 0,
           completion_status: 'not_started',
         }));
@@ -595,6 +596,7 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
 
     return {
       ...e,
+      exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
       question_count: count,
       academic_year: store.academic_years.find((y) => y.id === e.academic_year_id),
       module: store.modules.find((m) => m.id === e.module_id),
@@ -615,6 +617,7 @@ export async function getExam(id: string): Promise<Exam | null> {
       if (!error && data) {
         return {
           ...data,
+          exam_type: (data.exam_type === 'midterm' || data.exam_type === 'end_module') ? 'end_module' : (data.exam_type || 'final'),
           question_count: Array.isArray(data.exam_questions) ? data.exam_questions.length : 0,
         };
       }
@@ -629,6 +632,7 @@ export async function getExam(id: string): Promise<Exam | null> {
   const count = store.exam_questions.filter((eq) => eq.exam_id === exam.id).length;
   return {
     ...exam,
+    exam_type: (exam.exam_type === 'midterm' || exam.exam_type === 'end_module') ? 'end_module' : (exam.exam_type || 'final'),
     question_count: count,
     academic_year: store.academic_years.find((y) => y.id === exam.academic_year_id),
     module: store.modules.find((m) => m.id === exam.module_id),
@@ -670,6 +674,9 @@ export async function createExam(data: Omit<Exam, 'id'> & { question_ids?: strin
   if (supabase) {
     try {
       const { academic_year: _y, module: _m, questions: _q, question_count: _qc, ...examRow } = newExam as any;
+      if (examRow.exam_type === 'end_module') {
+        examRow.exam_type = 'midterm';
+      }
       await supabase.from('exams').upsert([examRow], { onConflict: 'id' });
       if (data.question_ids && data.question_ids.length > 0) {
         const eqRows = data.question_ids.map((qid, idx) => ({
@@ -716,6 +723,9 @@ export async function updateExam(
   if (supabase) {
     try {
       const { question_ids: _, ...examUpdates } = updates;
+      if ((examUpdates as any).exam_type === 'end_module') {
+        (examUpdates as any).exam_type = 'midterm';
+      }
       await supabase.from('exams').update(examUpdates).eq('id', id);
     } catch (e) {
       console.warn('Error updating exam in Supabase:', e);
@@ -1203,7 +1213,10 @@ export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<vo
     // 6. Sync exams (only valid year & module)
     const validExams = store.exams.filter((e) => validYearIds.has(e.academic_year_id) && validModIds.has(e.module_id));
     if (validExams.length > 0) {
-      const cleanExams = validExams.map(({ academic_year: _ay, module: _m, questions: _q, question_count: _qc, completion_status: _cs, previous_score: _ps, ...rest }: any) => rest);
+      const cleanExams = validExams.map(({ academic_year: _ay, module: _m, questions: _q, question_count: _qc, completion_status: _cs, previous_score: _ps, ...rest }: any) => ({
+        ...rest,
+        exam_type: (rest.exam_type === 'end_module' || rest.exam_type === 'midterm') ? 'midterm' : (rest.exam_type || 'final'),
+      }));
       const { error: exErr } = await supabase.from('exams').upsert(cleanExams, { onConflict: 'id' });
       if (exErr) console.error('[Supabase Sync] exams error:', exErr);
     }
@@ -1652,8 +1665,38 @@ export async function getPlatformStats(studentId = 'default_student') {
 
 // ---------------- Reset/Seed -----------------
 export async function resetDatabaseWithSeed(): Promise<void> {
+  // 1. Wipe Supabase tables in strict reverse foreign-key order (preserve admins)
+  if (supabase) {
+    try {
+      const tables = [
+        'student_answers',
+        'student_attempts',
+        'bookmarks',
+        'exam_questions',
+        'explanations',
+        'answer_choices',
+        'questions',
+        'exams',
+        'concepts',
+        'chapters',
+        'subjects',
+        'modules',
+        'academic_years',
+      ];
+      for (const table of tables) {
+        const { error } = await supabase.from(table).delete().not('id', 'is', null);
+        if (error) {
+          console.error(`[Database Reset] Error clearing table ${table}:`, error);
+        }
+      }
+    } catch (err) {
+      console.error('[Database Reset] Fatal error clearing Supabase:', err);
+    }
+  }
+
+  // 2. Wipe local store (preserving existing admins)
   const store = readLocalStore();
-  const existingAdmins = store.admins || [];
+  const existingAdmins = store.admins && store.admins.length > 0 ? store.admins : [];
   const seed = generateSeedData();
   seed.admins = existingAdmins;
   writeLocalStore(seed);
@@ -1775,7 +1818,10 @@ export async function syncCloudToLocal(): Promise<{
     if (!conceptsRes?.error && conceptsRes?.data) store.concepts = conceptsRes.data;
 
     if (!examsRes?.error && examsRes?.data) {
-      store.exams = examsRes.data;
+      store.exams = examsRes.data.map((e: any) => ({
+        ...e,
+        exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
+      }));
       newExamsCount = examsRes.data.length;
     }
 

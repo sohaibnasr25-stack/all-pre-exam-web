@@ -1356,14 +1356,25 @@ D) Normal myocardium with subtle wavy fibers only
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 onClick={async () => {
-                  if (!confirm('تحذير: سيتم مسح وتفريغ كافة الامتحانات والأسئلة والمناهج والنتائج لتصبح قاعدة البيانات خالية تماماً (Clean Slate) مع الاحتفاظ بحسابات الأدمن. هل تريد المتابعة؟')) return;
-                  const res = await adminFetch('/api/admin/reset', { method: 'POST' });
-                  const d = await res.json();
-                  if (d.success) {
-                    showFeedback('success', 'تم تفريغ قاعدة البيانات بنجاح وأصبحت خالية تماماً');
-                    refreshAllData();
-                  } else {
-                    showFeedback('error', d.message || d.error || 'فشلت عملية مسح البيانات');
+                  if (!confirm('تحذير: سيتم مسح وتفريغ كافة الامتحانات والأسئلة والمناهج والنتائج لتصبح قاعدة البيانات السحابية والمحلية خالية تماماً (Clean Slate) مع الاحتفاظ بحسابات الأدمن. هل تريد المتابعة؟')) return;
+                  try {
+                    const res = await adminFetch('/api/admin/reset', { method: 'POST' });
+                    const d = await res.json();
+                    if (d.success) {
+                      try {
+                        Object.keys(localStorage).forEach((k) => {
+                          if (k.startsWith('omnimed_')) {
+                            localStorage.removeItem(k);
+                          }
+                        });
+                      } catch {}
+                      showFeedback('success', 'تم تفريغ ومسح قاعدة البيانات السحابية والمحلية بالكامل والبدء على بياض بنجاح!');
+                      await refreshAllData();
+                    } else {
+                      showFeedback('error', d.message || d.error || 'فشلت عملية مسح البيانات');
+                    }
+                  } catch (err) {
+                    showFeedback('error', 'تعذر الاتصال بالخادم لمسح قاعدة البيانات: ' + String(err));
                   }
                 }}
                 className="btn btn-danger"
