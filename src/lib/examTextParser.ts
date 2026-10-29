@@ -49,10 +49,10 @@ const arabicToLatinLetter: Record<string, string> = {
 };
 
 const questionStartRegex = /^(?:(?:\[?(?:Question|سؤال|السؤال|س|Q)\s*(\d+)\]?[:.]?)|(?:\(?\s*(\d+)\s*[\.\)\:\-]\s*))/i;
-const choiceRegex = /^\s*(\*?)\s*(?:\[\s*([A-Ea-e]|[أ-ي])\s*\]|\(\s*([A-Ea-e]|[أ-ي])\s*\)|([A-Ea-e]|[أ-ي])\s*[\.\)\:\-])\s*(\*?)\s*(.*)/;
-const explanationRegex = /^(?:[-*•]\s*)?(?:Explanation|Exp|التفسير|تفسير|الشرح|شرح)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=]\s*(.*)$/i;
-const sourceRegex = /^(?:[-*•]\s*)?(?:Reference|Ref|Source|Book|المرجع|المصدر|الكتاب)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=]\s*(.*)$/i;
-const pageRegex = /^(?:[-*•]\s*)?(?:Page|Pg|p\.|الصفحة|صفحة|ص)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=]\s*(.*)$/i;
+const choiceRegex = /^\s*(\*?)\s*(?:\[\s*([A-Ea-e]|[أ-ي])\s*\]|\(\s*([A-Ea-e]|[أ-ي])\s*\)|[-*•]?\s*([A-Ea-e]|[أ-ي])\s*[\.\)\:\-])\s*(\*?)\s*(.*)/;
+const explanationRegex = /^(?:[-*•]\s*)?(?:(?:Classification|تصنيف)\s*[:=—–\-]\s*)?(?:Explanation|Exp|التفسير|تفسير|الشرح|شرح)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]\s*(.*)$/i;
+const sourceRegex = /^(?:[-*•]\s*)?(?:Reference|Ref|Source|Book|المرجع|المصدر|الكتاب)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]\s*(.*)$/i;
+const pageRegex = /^(?:[-*•]\s*)?(?:Page|Pg|p\.|الصفحة|صفحة|ص)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]\s*(.*)$/i;
 
 function splitMultiExamChunks(text: string): string[] {
   const lines = text.split(/\r?\n/);
@@ -273,7 +273,39 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
 
     const flushCurrentChoice = () => {
       if (currentChoice) {
+        let text = currentChoice.text;
+        let explanation = currentChoice.explanation || '';
+
+        // Extract any embedded explanation/classification from choice text
+        const explMatch = text.match(/(?:Classification:\s*)?(Explanation(?:\s*\([A-Ea-e]\))?\s*[—–\-:].*)$/i);
+        if (explMatch) {
+          explanation = (explanation ? explanation + ' ' : '') + explMatch[1].trim();
+          text = text.substring(0, explMatch.index).trim();
+        } else if (/Classification:/i.test(text)) {
+          const classIdx = text.search(/Classification:/i);
+          const explText = text.substring(classIdx).replace(/^Classification:\s*/i, '').trim();
+          text = text.substring(0, classIdx).trim();
+          if (explText) {
+            explanation = (explanation ? explanation + ' ' : '') + explText;
+          }
+        }
+
+        // Extract any inline sub-choice like " - C. In renal..." or " - D. Niacin"
+        const subChoiceMatch = text.match(/\s+[-–—]\s+([A-Ea-e])\.\s+(.*)$/);
+        let subChoice: ParsedChoice | null = null;
+        if (subChoiceMatch) {
+          const subLetter = (arabicToLatinLetter[subChoiceMatch[1]] || subChoiceMatch[1]).toUpperCase();
+          const subText = subChoiceMatch[2].trim();
+          text = text.substring(0, subChoiceMatch.index).trim();
+          subChoice = { letter: subLetter, text: subText, is_correct: false };
+        }
+
+        currentChoice.text = text;
+        currentChoice.explanation = explanation || undefined;
         choices.push({ ...currentChoice });
+        if (subChoice) {
+          choices.push(subChoice);
+        }
         currentChoice = null;
       }
     };
@@ -448,6 +480,31 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
     }
 
     flushCurrentChoice();
+
+    // Check if Question stem has " - A. <Choice text>"
+    const stemMatch = qText.match(/\s+[-–—]\s+A\.\s+(.*)$/i);
+    if (stemMatch) {
+      const aText = stemMatch[1].trim();
+      qText = qText.substring(0, stemMatch.index).trim();
+      choices.unshift({ letter: 'A', text: aText, is_correct: true });
+    }
+
+    // Sort choices alphabetically by letter
+    choices.sort((a, b) => a.letter.localeCompare(b.letter));
+
+    // Check if any explanation explicitly indicates the correct choice
+    const correctExpl = choices.find(
+      (c) => c.explanation && /Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*Correct/i.test(c.explanation)
+    );
+    if (correctExpl && correctExpl.explanation) {
+      const m = correctExpl.explanation.match(/Explanation\s*\(([A-Ea-e])\)\s*[—–\-:]\s*Correct/i);
+      if (m) {
+        const correctLetter = m[1].toUpperCase();
+        choices.forEach((c) => {
+          c.is_correct = c.letter === correctLetter;
+        });
+      }
+    }
 
     if (choices.length === 0) {
       choices.push(

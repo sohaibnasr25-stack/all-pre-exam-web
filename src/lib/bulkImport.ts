@@ -208,6 +208,8 @@ function importSingleExamIntoStore(
 
     // Insert Answer Choices and Explanations
     const safeChoices = Array.isArray(q.choices) ? q.choices : [];
+    const questionLevelExpl = safeChoices.find((c) => c.explanation)?.explanation;
+
     safeChoices.forEach((c, cIdx) => {
       const choiceId = `c-${newQId}-${cIdx}`;
       const choiceObj: AnswerChoice = {
@@ -220,13 +222,14 @@ function importSingleExamIntoStore(
       };
       store.answer_choices.push(choiceObj);
 
-      if (c.explanation || c.is_correct) {
+      const explText = c.explanation || (c.is_correct ? questionLevelExpl : undefined);
+      if (explText || c.is_correct) {
         const explanationObj: ExplanationItem = {
           id: `exp-${choiceId}`,
           question_id: newQId,
           choice_id: choiceId,
           choice_letter: c.letter,
-          explanation_text: c.explanation || (c.is_correct ? 'Correct medical answer.' : 'Incorrect option.'),
+          explanation_text: explText || (c.is_correct ? 'Correct medical answer.' : 'Incorrect option.'),
           is_why_correct: c.is_correct,
           is_why_incorrect: !c.is_correct,
           source_document: c.source_document || 'Core Medical Literature',

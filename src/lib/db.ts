@@ -1639,8 +1639,10 @@ export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
     });
   });
 
-  // Sort by appearance count descending (repeated concepts at the top!)
-  return stats.sort((a, b) => b.appearance_count - a.appearance_count);
+  // Filter only genuinely repeated concepts (appearance_count > 1) and sort descending
+  return stats
+    .filter((item) => item.appearance_count > 1)
+    .sort((a, b) => b.appearance_count - a.appearance_count);
 }
 
 // ---------------- Weakness Analysis -----------------

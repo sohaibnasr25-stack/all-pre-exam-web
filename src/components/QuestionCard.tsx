@@ -106,10 +106,10 @@ export default function QuestionCard({
   const selectedChoice = question.answer_choices.find((c) => c.id === selectedChoiceId);
   const isUserCorrect = selectedChoice?.is_correct ?? false;
 
-  // Main correct explanation
-  const mainExplanation = question.explanations.find(
-    (e) => e.is_why_correct || (e.choice_id && e.choice_id === correctChoice?.id)
-  );
+  // Main correct explanation (fallback to first available explanation)
+  const mainExplanation =
+    question.explanations.find((e) => e.is_why_correct || (e.choice_id && e.choice_id === correctChoice?.id)) ||
+    question.explanations[0];
 
   return (
     <div
