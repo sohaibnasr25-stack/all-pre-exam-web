@@ -222,16 +222,25 @@ function importSingleExamIntoStore(
       };
       store.answer_choices.push(choiceObj);
 
-      const explText = c.explanation || (c.is_correct ? questionLevelExpl : undefined);
+      let explText = c.explanation;
+      if (!explText && c.is_correct && questionLevelExpl) {
+        // Only inherit questionLevelExpl if it doesn't explicitly belong to a different choice letter
+        const targetLetterMatch = questionLevelExpl.match(/Explanation\s*\(([A-Ea-e])\)/i);
+        if (!targetLetterMatch || targetLetterMatch[1].toUpperCase() === c.letter.toUpperCase()) {
+          explText = questionLevelExpl;
+        }
+      }
+
       if (explText || c.is_correct) {
+        const isWhyCorrect = Boolean(c.is_correct);
         const explanationObj: ExplanationItem = {
           id: `exp-${choiceId}`,
           question_id: newQId,
           choice_id: choiceId,
           choice_letter: c.letter,
           explanation_text: explText || (c.is_correct ? 'Correct medical answer.' : 'Incorrect option.'),
-          is_why_correct: c.is_correct,
-          is_why_incorrect: !c.is_correct,
+          is_why_correct: isWhyCorrect,
+          is_why_incorrect: !isWhyCorrect,
           source_document: c.source_document || 'Core Medical Literature',
           source_page: c.source_page || 'p. Reference',
           source_reference: c.source_reference || 'Core Curriculum',

@@ -266,6 +266,7 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
     let qSubject = '';
     let qChapter = '';
     let qConcept = '';
+    let explicitAnswerLetter: string | null = null;
 
     const choices: ParsedChoice[] = [];
     let currentChoice: ParsedChoice | null = null;
@@ -360,6 +361,15 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       }
       if (lower.startsWith('concept:') || rawL.startsWith('المفهوم:') || rawL.startsWith('الموضوع:')) {
         qConcept = rawL.substring(rawL.indexOf(':') + 1).trim();
+        continue;
+      }
+
+      // Check explicit answer line (e.g. "Answer: B", "Ans: C", "Key: D", "الإجابة: A")
+      const answerRegex = /^(?:Answer|Ans|Key|Correct(?:\s+Answer)?|الجواب|الإجابة|الإجابة\s+الصحيحة)\s*[:=\-]\s*([A-Ea-eأ-د])/i;
+      const ansMatch = rawL.match(answerRegex);
+      if (ansMatch) {
+        const rawAnsLetter = ansMatch[1];
+        explicitAnswerLetter = (arabicToLatinLetter[rawAnsLetter] || rawAnsLetter).toUpperCase();
         continue;
       }
 
@@ -486,24 +496,38 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
     if (stemMatch) {
       const aText = stemMatch[1].trim();
       qText = qText.substring(0, stemMatch.index).trim();
-      choices.unshift({ letter: 'A', text: aText, is_correct: true });
+      choices.unshift({ letter: 'A', text: aText, is_correct: false });
     }
 
     // Sort choices alphabetically by letter
     choices.sort((a, b) => a.letter.localeCompare(b.letter));
 
+    // Choice explanations: mark choices explicitly marked as Incorrect
+    choices.forEach((c) => {
+      if (c.explanation && /Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation)) {
+        c.is_correct = false;
+      }
+    });
+
     // Check if any explanation explicitly indicates the correct choice
     const correctExpl = choices.find(
-      (c) => c.explanation && /Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*Correct/i.test(c.explanation)
+      (c) => c.explanation && /Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i.test(c.explanation)
     );
     if (correctExpl && correctExpl.explanation) {
-      const m = correctExpl.explanation.match(/Explanation\s*\(([A-Ea-e])\)\s*[—–\-:]\s*Correct/i);
+      const m = correctExpl.explanation.match(/Explanation\s*\(([A-Ea-e])\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i);
       if (m) {
-        const correctLetter = m[1].toUpperCase();
+        const correctLetter = (arabicToLatinLetter[m[1]] || m[1]).toUpperCase();
         choices.forEach((c) => {
           c.is_correct = c.letter === correctLetter;
         });
       }
+    }
+
+    // If explicit answer was declared via "Answer: X" line
+    if (explicitAnswerLetter) {
+      choices.forEach((c) => {
+        c.is_correct = c.letter === explicitAnswerLetter;
+      });
     }
 
     if (choices.length === 0) {
@@ -515,7 +539,15 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       );
     } else {
       if (!choices.some((c) => c.is_correct)) {
-        choices[0].is_correct = true;
+        // Fallback: pick first choice that does NOT have an "Incorrect" flag in its explanation
+        const safeCandidate = choices.find(
+          (c) => !c.explanation || !/Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation)
+        );
+        if (safeCandidate) {
+          safeCandidate.is_correct = true;
+        } else {
+          choices[0].is_correct = true;
+        }
       }
     }
 

@@ -566,9 +566,148 @@ D) Normal myocardium with subtle wavy fibers only
       if (data.success) {
         showFeedback('success', editingQuestionId ? 'Question updated' : 'Question created');
         setQuestionModalOpen(false);
+
+        // Sync examQuestionsList if this question is part of the currently edited exam
+        if (editingQuestionId) {
+          setExamQuestionsList((prev) =>
+            prev.map((item) => {
+              if (item.id !== editingQuestionId) return item;
+              return {
+                ...item,
+                question_text: qForm.question_text,
+                clinical_vignette: qForm.clinical_vignette,
+                subject_id: qForm.subject_id,
+                chapter_id: qForm.chapter_id,
+                concept_id: qForm.concept_id,
+                answer_choices: qForm.answer_choices.map((c, i) => ({
+                  ...c,
+                  order_index: i + 1,
+                })),
+                explanations: qForm.explanations.map((e, i) => ({
+                  ...e,
+                  order_index: i + 1,
+                })),
+              };
+            })
+          );
+        }
+
         refreshAllData();
       } else {
         showFeedback('error', data.message || data.error || 'Operation failed');
+      }
+    } catch (err) {
+      showFeedback('error', String(err));
+    }
+  };
+
+  const handleAddModuleToYear = async (year: AcademicYear) => {
+    const name = prompt(`اسم الموديول الجديد للعام الدراسي "${year.name}":`);
+    if (!name || !name.trim()) return;
+    const code = prompt(`كود الموديول (مثال: HAEM-202):`);
+    if (!code || !code.trim()) return;
+    try {
+      const res = await adminFetch('/api/modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          code: code.trim(),
+          academic_year_id: year.id,
+          order_index: modules.length + 1,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', `تمت إضافة الموديول "${name.trim()}" إلى ${year.name} بنجاح`);
+        refreshAllData();
+      } else {
+        showFeedback('error', data.message || 'فشل إنشاء الموديول');
+      }
+    } catch (err) {
+      showFeedback('error', String(err));
+    }
+  };
+
+  const handleMoveModuleToYear = async (mod: Module, targetYearId: string) => {
+    if (!targetYearId || targetYearId === mod.academic_year_id) return;
+    const targetYear = academicYears.find((y) => y.id === targetYearId);
+    if (!targetYear) return;
+    if (!confirm(`هل أنت متأكد من نقل موديول "${mod.name}" إلى ${targetYear.name}؟`)) return;
+    try {
+      const res = await adminFetch('/api/modules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: mod.id, academic_year_id: targetYearId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', `تم نقل موديول "${mod.name}" إلى ${targetYear.name} بنجاح`);
+        setModules((prev) =>
+          prev.map((m) => (m.id === mod.id ? { ...m, academic_year_id: targetYearId, academic_year: targetYear } : m))
+        );
+        refreshAllData();
+      } else {
+        showFeedback('error', data.message || 'فشل نقل الموديول');
+      }
+    } catch (err) {
+      showFeedback('error', String(err));
+    }
+  };
+
+  const handleAddExamToModule = (mod: Module) => {
+    setEditingExamId(null);
+    setExamForm({
+      title: '',
+      academic_year_id: mod.academic_year_id || academicYears[0]?.id || '',
+      module_id: mod.id,
+      exam_type: 'end_module',
+      duration_minutes: 60,
+      passing_score: 70,
+      instructions: '',
+    });
+    setExamQuestionsList([]);
+    setSelectedExamQuestionIds([]);
+    setExamQuestionSearch('');
+    setExamQuestionFilterModule(mod.id);
+    setExamQuestionFilterSubject('all');
+    setExamActiveTab('settings');
+    setExamModalOpen(true);
+  };
+
+  const handleMoveExamToModule = async (exam: Exam, targetModuleId: string) => {
+    if (!targetModuleId || targetModuleId === exam.module_id) return;
+    const targetModule = modules.find((m) => m.id === targetModuleId);
+    if (!targetModule) return;
+    if (!confirm(`هل أنت متأكد من نقل امتحان "${exam.title}" إلى موديول "${targetModule.name}"؟`)) return;
+    try {
+      const res = await adminFetch('/api/exams', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: exam.id,
+          module_id: targetModuleId,
+          academic_year_id: targetModule.academic_year_id || exam.academic_year_id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', `تم نقل امتحان "${exam.title}" إلى موديول "${targetModule.name}" بنجاح`);
+        setExams((prev) =>
+          prev.map((e) =>
+            e.id === exam.id
+              ? {
+                  ...e,
+                  module_id: targetModuleId,
+                  module: targetModule,
+                  academic_year_id: targetModule.academic_year_id || e.academic_year_id,
+                }
+              : e
+          )
+        );
+        refreshAllData();
+      } else {
+        showFeedback('error', data.message || 'فشل نقل الامتحان');
       }
     } catch (err) {
       showFeedback('error', String(err));
@@ -1034,7 +1173,7 @@ D) Normal myocardium with subtle wavy fibers only
                             order_index: idx + 1,
                             answer_choices: choices,
                             explanations: explanations,
-                            isExpanded: idx < 2,
+                            isExpanded: false,
                           };
                         });
 
@@ -1088,7 +1227,12 @@ D) Normal myocardium with subtle wavy fibers only
       {activeTab === 'years' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Academic Years</h2>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Academic Years (الأعوام الدراسية)</h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                إدارة السنوات الدراسية وإضافة الموديولات مباشرة أو نقلها بين الأعوام
+              </p>
+            </div>
             <button
               onClick={async () => {
                 const name = prompt('Academic Year Name (e.g. Year 4: Speciality Clerkships):');
@@ -1108,40 +1252,147 @@ D) Normal myocardium with subtle wavy fibers only
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {academicYears.map((year) => (
-              <div
-                key={year.id}
-                className="card-3d"
-                style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{year.name}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>Code: {year.code}</div>
-                </div>
-                <button
-                  onClick={async () => {
-                    if (!confirm(`Delete ${year.name}?`)) return;
-                    setAcademicYears((prev) => prev.filter((y) => y.id !== year.id));
-                    try {
-                      const res = await adminFetch(`/api/academic-years?id=${year.id}`, { method: 'DELETE' });
-                      const data = await res.json();
-                      if (data.success) {
-                        showFeedback('success', `Year "${year.name}" deleted successfully`);
-                      } else {
-                        showFeedback('error', data.message || 'Failed to delete year');
-                      }
-                    } catch (err) {
-                      showFeedback('error', String(err));
-                    }
-                    await refreshAllData();
-                  }}
-                  className="btn btn-danger btn-sm"
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {academicYears.map((year) => {
+              const yearModules = modules.filter((m) => m.academic_year_id === year.id);
+              return (
+                <div
+                  key={year.id}
+                  className="card-3d"
+                  style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
                 >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
+                  {/* Year Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      paddingBottom: '0.85rem',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>{year.name}</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
+                        Code: <span style={{ color: 'var(--color-primary)' }}>{year.code}</span> • {yearModules.length} موديولات مرتبطة بهذا العام
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleAddModuleToYear(year)}
+                        className="btn btn-primary btn-sm"
+                        style={{ gap: '0.35rem', fontSize: '0.82rem' }}
+                      >
+                        <Plus size={14} />
+                        <span>إضافة موديول لهذا العام</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete ${year.name}?`)) return;
+                          setAcademicYears((prev) => prev.filter((y) => y.id !== year.id));
+                          try {
+                            const res = await adminFetch(`/api/academic-years?id=${year.id}`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (data.success) {
+                              showFeedback('success', `Year "${year.name}" deleted successfully`);
+                            } else {
+                              showFeedback('error', data.message || 'Failed to delete year');
+                            }
+                          } catch (err) {
+                            showFeedback('error', String(err));
+                          }
+                          await refreshAllData();
+                        }}
+                        className="btn btn-danger btn-sm"
+                        title="حذف هذا العام الدراسي"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Modules within this Year */}
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                      الموديولات التابعة لهذا العام ({yearModules.length}):
+                    </div>
+                    {yearModules.length === 0 ? (
+                      <div
+                        style={{
+                          fontSize: '0.82rem',
+                          color: 'var(--text-dim)',
+                          fontStyle: 'italic',
+                          padding: '0.75rem',
+                          background: 'rgba(255,255,255,0.02)',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        لا توجد موديولات مسجلة لهذا العام بعد. اضغط "إضافة موديول لهذا العام" لإنشاء موديول جديد وربطه به فوراً.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                        {yearModules.map((mod) => (
+                          <div
+                            key={mod.id}
+                            style={{
+                              background: 'var(--bg-surface-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              borderRadius: 'var(--radius-md)',
+                              padding: '0.85rem 1rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              gap: '0.6rem',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{mod.name}</div>
+                                <div style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>كود: {mod.code}</div>
+                              </div>
+                              <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>
+                                {exams.filter((e) => e.module_id === mod.id).length} امتحانات
+                              </span>
+                            </div>
+
+                            {/* Transfer Module to another Academic Year */}
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.5rem',
+                                borderTop: '1px solid rgba(255,255,255,0.05)',
+                                paddingTop: '0.5rem',
+                              }}
+                            >
+                              <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                                نقل لعام آخر:
+                              </span>
+                              <select
+                                value={mod.academic_year_id || year.id}
+                                onChange={(e) => handleMoveModuleToYear(mod, e.target.value)}
+                                className="form-select"
+                                style={{ fontSize: '0.76rem', padding: '0.2rem 0.5rem', flex: 1, minWidth: '120px' }}
+                              >
+                                {academicYears.map((y) => (
+                                  <option key={y.id} value={y.id}>
+                                    {y.id === year.id ? `✓ ${y.name} (الحالي)` : `نقل إلى: ${y.name}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1149,7 +1400,12 @@ D) Normal myocardium with subtle wavy fibers only
       {activeTab === 'modules' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Modules</h2>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Modules (الموديولات)</h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                إدارة الموديولات وإضافة الامتحانات مباشرة إليها أو نقلها بين الموديولات
+              </p>
+            </div>
             <button
               onClick={async () => {
                 const name = prompt('Module Name (e.g. Gastrointestinal System):');
@@ -1170,42 +1426,166 @@ D) Normal myocardium with subtle wavy fibers only
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {modules.map((mod) => (
-              <div
-                key={mod.id}
-                className="card-3d"
-                style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>{mod.name}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
-                    Code: {mod.code} • Year: {mod.academic_year?.name || mod.academic_year_id}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {modules.map((mod) => {
+              const modExams = exams.filter((e) => e.module_id === mod.id);
+              const parentYear = academicYears.find((y) => y.id === mod.academic_year_id);
+              return (
+                <div
+                  key={mod.id}
+                  className="card-3d"
+                  style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                >
+                  {/* Module Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      paddingBottom: '0.85rem',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
+                        <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)' }}>{mod.name}</span>
+                        {parentYear && (
+                          <span className="badge badge-teal" style={{ fontSize: '0.72rem' }}>
+                            {parentYear.name}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>
+                        Code: <span style={{ color: 'var(--color-primary)' }}>{mod.code}</span> • {modExams.length} امتحانات مرتبطة بهذا الموديول
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleAddExamToModule(mod)}
+                        className="btn btn-primary btn-sm"
+                        style={{ gap: '0.35rem', fontSize: '0.82rem' }}
+                      >
+                        <Plus size={14} />
+                        <span>إضافة امتحان لهذا الموديول</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete ${mod.name}?`)) return;
+                          setModules((prev) => prev.filter((m) => m.id !== mod.id));
+                          try {
+                            const res = await adminFetch(`/api/modules?id=${mod.id}`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (data.success) {
+                              showFeedback('success', `Module "${mod.name}" deleted successfully`);
+                            } else {
+                              showFeedback('error', data.message || 'Failed to delete module');
+                            }
+                          } catch (err) {
+                            showFeedback('error', String(err));
+                          }
+                          await refreshAllData();
+                        }}
+                        className="btn btn-danger btn-sm"
+                        title="حذف هذا الموديول"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Exams within this Module */}
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                      الامتحانات التابعة لهذا الموديول ({modExams.length}):
+                    </div>
+                    {modExams.length === 0 ? (
+                      <div
+                        style={{
+                          fontSize: '0.82rem',
+                          color: 'var(--text-dim)',
+                          fontStyle: 'italic',
+                          padding: '0.75rem',
+                          background: 'rgba(255,255,255,0.02)',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        لا توجد امتحانات مسجلة لهذا الموديول بعد. اضغط "إضافة امتحان لهذا الموديول" لإنشاء امتحان وربطه به فوراً.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                        {modExams.map((exam) => {
+                          const qCount = questions.filter(
+                            (q) => q.exam_ids?.includes(exam.id) || (q as any).exam_questions?.some((eq: any) => eq.exam_id === exam.id)
+                          ).length;
+                          return (
+                            <div
+                              key={exam.id}
+                              style={{
+                                background: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '0.85rem 1rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                gap: '0.6rem',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{exam.title}</div>
+                                  <div style={{ fontSize: '0.76rem', color: 'var(--text-dim)', display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                    <span className="badge badge-purple" style={{ fontSize: '0.65rem' }}>
+                                      {exam.exam_type === 'end_module' ? 'End Module' : 'Final'}
+                                    </span>
+                                    <span>• {exam.duration_minutes || 60} دقيقة</span>
+                                  </div>
+                                </div>
+                                <span className="badge badge-teal" style={{ fontSize: '0.68rem' }}>
+                                  {qCount} سؤال
+                                </span>
+                              </div>
+
+                              {/* Transfer Exam to another Module */}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '0.5rem',
+                                  borderTop: '1px solid rgba(255,255,255,0.05)',
+                                  paddingTop: '0.5rem',
+                                }}
+                              >
+                                <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                                  نقل لموديول آخر:
+                                </span>
+                                <select
+                                  value={exam.module_id || mod.id}
+                                  onChange={(e) => handleMoveExamToModule(exam, e.target.value)}
+                                  className="form-select"
+                                  style={{ fontSize: '0.76rem', padding: '0.2rem 0.5rem', flex: 1, minWidth: '130px' }}
+                                >
+                                  {modules.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                      {m.id === mod.id ? `✓ ${m.name} (الحالي)` : `نقل إلى: ${m.name}`}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <button
-                  onClick={async () => {
-                    if (!confirm(`Delete ${mod.name}?`)) return;
-                    setModules((prev) => prev.filter((m) => m.id !== mod.id));
-                    try {
-                      const res = await adminFetch(`/api/modules?id=${mod.id}`, { method: 'DELETE' });
-                      const data = await res.json();
-                      if (data.success) {
-                        showFeedback('success', `Module "${mod.name}" deleted successfully`);
-                      } else {
-                        showFeedback('error', data.message || 'Failed to delete module');
-                      }
-                    } catch (err) {
-                      showFeedback('error', String(err));
-                    }
-                    await refreshAllData();
-                  }}
-                  className="btn btn-danger btn-sm"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -2545,41 +2925,37 @@ C) Choice C"
                               key={q.id}
                               style={{
                                 background: 'var(--bg-surface-elevated)',
-                                borderRadius: 'var(--radius-md)',
+                                borderRadius: 'var(--radius-lg)',
                                 border: '1px solid var(--border-subtle)',
-                                overflow: 'hidden',
+                                padding: '1.25rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.85rem',
                                 transition: 'border-color 0.15s ease',
                               }}
                             >
-                              {/* Question Summary Bar */}
+                              {/* Question Top Header Bar */}
                               <div
-                                onClick={() => {
-                                  setExamQuestionsList((prev) =>
-                                    prev.map((item, i) => (i === originalIdx ? { ...item, isExpanded: !item.isExpanded } : item))
-                                  );
-                                }}
                                 style={{
-                                  padding: '0.85rem 1.25rem',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  cursor: 'pointer',
-                                  background: isExpanded ? 'rgba(255, 255, 255, 0.03)' : 'transparent',
-                                  borderBottom: isExpanded ? '1px solid var(--border-subtle)' : 'none',
-                                  userSelect: 'none',
-                                  gap: '0.75rem',
+                                  flexWrap: 'wrap',
+                                  gap: '0.6rem',
+                                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                  paddingBottom: '0.65rem',
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                                   <span
                                     style={{
-                                      width: '28px',
-                                      height: '28px',
-                                      borderRadius: '6px',
+                                      width: '30px',
+                                      height: '30px',
+                                      borderRadius: '8px',
                                       background: 'var(--color-primary)',
                                       color: '#ffffff',
                                       fontWeight: 800,
-                                      fontSize: '0.82rem',
+                                      fontSize: '0.86rem',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
@@ -2589,68 +2965,173 @@ C) Choice C"
                                     #{originalIdx + 1}
                                   </span>
 
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
-                                      {qSubject && (
-                                        <span className="badge badge-purple" style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}>
-                                          {qSubject.name}
-                                        </span>
-                                      )}
-                                      {qConcept && (
-                                        <span className="badge badge-teal" style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem' }}>
-                                          {qConcept.name}
-                                        </span>
-                                      )}
-                                      <span
-                                        className="badge badge-green"
-                                        style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', fontWeight: 700 }}
-                                      >
-                                        الإجابة الصحيحة: Choice {correctChoice?.choice_letter || 'A'}
-                                      </span>
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: '0.88rem',
-                                        fontWeight: 600,
-                                        color: 'var(--text-main)',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                      }}
-                                    >
-                                      {q.question_text || 'نص السؤال فارغ...'}
-                                    </div>
-                                  </div>
+                                  {qSubject && (
+                                    <span className="badge badge-purple" style={{ fontSize: '0.72rem', padding: '0.2rem 0.55rem' }}>
+                                      {qSubject.name}
+                                    </span>
+                                  )}
+                                  {qConcept && (
+                                    <span className="badge badge-teal" style={{ fontSize: '0.72rem', padding: '0.2rem 0.55rem' }}>
+                                      {qConcept.name}
+                                    </span>
+                                  )}
+                                  <span
+                                    className="badge badge-green"
+                                    style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', fontWeight: 700 }}
+                                  >
+                                    ✓ الإجابة الصحيحة: Choice {correctChoice?.choice_letter || 'A'}
+                                  </span>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                   <button
                                     type="button"
-                                    onClick={(ev) => {
-                                      ev.stopPropagation();
+                                    onClick={() => {
+                                      const fullQ = questions.find((item) => item.id === q.id) || (q as unknown as Question);
+                                      openEditQuestionModal(fullQ);
+                                    }}
+                                    className="btn btn-primary btn-sm"
+                                    style={{ gap: '0.35rem', fontSize: '0.8rem', padding: '0.35rem 0.7rem' }}
+                                    title="فتح محرر السؤال الشامل لتعديل كافة الخصائص والشروحات"
+                                  >
+                                    <Edit size={14} />
+                                    <span>تعديل السؤال بالكامل</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExamQuestionsList((prev) =>
+                                        prev.map((item, i) => (i === originalIdx ? { ...item, isExpanded: !item.isExpanded } : item))
+                                      );
+                                    }}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{ gap: '0.35rem', fontSize: '0.8rem', padding: '0.35rem 0.7rem' }}
+                                  >
+                                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                    <span>{isExpanded ? 'إخفاء التعديل السريع' : 'تعديل سريع هنا'}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
                                       if (confirm(`هل أنت متأكد من إزالة السؤال #${originalIdx + 1} من هذا الامتحان؟`)) {
                                         setExamQuestionsList((prev) => prev.filter((_, i) => i !== originalIdx));
                                         setSelectedExamQuestionIds((prev) => prev.filter((id) => id !== q.id));
                                       }
                                     }}
-                                    style={{
-                                      padding: '0.35rem',
-                                      color: 'var(--text-dim)',
-                                      borderRadius: '4px',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      cursor: 'pointer',
-                                    }}
-                                    title="إزالة السؤال من هذا الامتحان"
+                                    className="btn btn-danger btn-sm"
+                                    style={{ padding: '0.35rem 0.55rem' }}
+                                    title="إزالة هذا السؤال من الامتحان"
                                   >
-                                    <Trash2 size={15} color="#fb7185" />
+                                    <Trash2 size={14} />
                                   </button>
-
-                                  <div style={{ color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }}>
-                                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                  </div>
                                 </div>
+                              </div>
+
+                              {/* Question Stem Text (Always Clearly Visible) */}
+                              <div>
+                                {q.clinical_vignette && (
+                                  <div
+                                    style={{
+                                      fontSize: '0.84rem',
+                                      color: 'var(--text-muted)',
+                                      fontStyle: 'italic',
+                                      marginBottom: '0.4rem',
+                                      padding: '0.4rem 0.65rem',
+                                      background: 'rgba(255, 255, 255, 0.02)',
+                                      borderRadius: '6px',
+                                      borderLeft: '2px solid var(--color-primary)',
+                                    }}
+                                  >
+                                    الحالة السريرية: {q.clinical_vignette}
+                                  </div>
+                                )}
+                                <div
+                                  style={{
+                                    fontSize: '0.98rem',
+                                    fontWeight: 700,
+                                    color: 'var(--text-main)',
+                                    lineHeight: 1.5,
+                                  }}
+                                >
+                                  {q.question_text || 'نص السؤال فارغ...'}
+                                </div>
+                              </div>
+
+                              {/* 4 Choices Grid (Always Visible & Clickable to Change Correct Answer Instantly) */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.55rem' }}>
+                                {q.answer_choices.map((choice, cIdx) => {
+                                  const isCorrect = Boolean(choice.is_correct);
+                                  return (
+                                    <div
+                                      key={choice.choice_letter}
+                                      onClick={() => {
+                                        setExamQuestionsList((prev) =>
+                                          prev.map((item, i) => {
+                                            if (i !== originalIdx) return item;
+                                            const choicesCopy = item.answer_choices.map((c, ci) => ({
+                                              ...c,
+                                              is_correct: ci === cIdx,
+                                            }));
+                                            const explsCopy = item.explanations.map((exp, ei) => ({
+                                              ...exp,
+                                              is_why_correct: ei === cIdx,
+                                              is_why_incorrect: ei !== cIdx,
+                                            }));
+                                            return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
+                                          })
+                                        );
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.65rem',
+                                        padding: '0.65rem 0.85rem',
+                                        borderRadius: '8px',
+                                        background: isCorrect ? 'rgba(16, 185, 129, 0.14)' : 'rgba(255, 255, 255, 0.03)',
+                                        border: isCorrect ? '1.5px solid #10b981' : '1px solid var(--border-subtle)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease',
+                                      }}
+                                      title="اضغط لتحديد هذا الاختيار كإجابة صحيحة"
+                                    >
+                                      <span
+                                        style={{
+                                          width: '26px',
+                                          height: '26px',
+                                          borderRadius: '6px',
+                                          background: isCorrect ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                                          color: '#ffffff',
+                                          fontWeight: 800,
+                                          fontSize: '0.82rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {choice.choice_letter}
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontSize: '0.86rem',
+                                          color: isCorrect ? '#34d399' : 'var(--text-main)',
+                                          flex: 1,
+                                          fontWeight: isCorrect ? 600 : 400,
+                                          lineHeight: 1.3,
+                                        }}
+                                      >
+                                        {choice.choice_text || <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>نص الاختيار فارغ</span>}
+                                      </span>
+                                      {isCorrect && (
+                                        <span className="badge badge-green" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem', flexShrink: 0 }}>
+                                          صحيحة ✓
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
 
                               {/* Question Full Properties Editor (Expanded View) */}
@@ -3283,7 +3764,7 @@ C) Choice C"
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 90,
+            zIndex: 110,
             background: 'rgba(5, 10, 20, 0.85)',
             backdropFilter: 'blur(10px)',
             display: 'flex',
