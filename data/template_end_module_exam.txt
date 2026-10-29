@@ -1,0 +1,99 @@
+Exam: End Module Examination — Physiology (Block 1)
+Type: end_module
+Year: Year 1
+Module: Cardiovascular & Respiratory Systems
+Subject: Physiology
+Chapter: Cardiac Physiology
+Concept: Cardiac Cycle & Hemodynamics
+Duration: 60
+Passing Score: 70
+
+1. A 45-year-old male presents with chest pain and dyspnea. An ECG shows a prolonged PR interval. Which structure is most likely responsible for this finding?
+A. Sinoatrial (SA) node
+* B. Atrioventricular (AV) node (Correct)
+C. Bundle of His
+D. Purkinje fibers
+E. Left bundle branch
+Explanation (B): The PR interval on the ECG represents the time for the electrical impulse to travel from the SA node through the AV node to the ventricles. Prolongation indicates delayed conduction at the AV node, which is the primary gatekeeper of the impulse between atria and ventricles.
+Reference (B): Guyton & Hall Textbook of Medical Physiology, 14th ed., p. 116
+
+2. During the cardiac cycle, which phase corresponds to the closure of the aortic and pulmonary valves?
+A. Isovolumetric contraction
+B. Rapid ejection
+* C. Isovolumetric relaxation (Correct)
+D. Rapid ventricular filling
+E. Atrial systole
+Explanation (C): The aortic and pulmonary (semilunar) valves close at the beginning of isovolumetric relaxation, when ventricular pressure drops below arterial pressure. This closure produces the second heart sound (S2).
+Reference (C): Guyton & Hall, 14th ed., p. 108
+
+3. A patient has a resting cardiac output of 5 L/min and a heart rate of 70 bpm. What is the stroke volume?
+A. 50 mL
+B. 60 mL
+* C. 71 mL (Correct)
+D. 85 mL
+E. 100 mL
+Explanation (C): Stroke Volume = Cardiac Output / Heart Rate = 5000 mL/min / 70 bpm = 71 mL. This is the volume of blood ejected per beat.
+Reference (C): Guyton & Hall, 14th ed., p. 110
+
+4. Which of the following best describes the Frank-Starling mechanism?
+A. Increased heart rate increases cardiac output regardless of filling
+* B. Increased end-diastolic volume increases stroke volume (Correct)
+C. Decreased afterload decreases stroke volume
+D. Sympathetic stimulation decreases contractility
+E. Parasympathetic stimulation increases heart rate
+Explanation (B): The Frank-Starling law states that the heart contracts more forcefully when it is filled with more blood (increased preload/EDV), stretching the myocardial fibers and increasing overlap of actin-myosin cross-bridges.
+Reference (B): Guyton & Hall, 14th ed., p. 113
+
+5. A 60-year-old woman with hypertension has an increased afterload on the left ventricle. Which of the following is the most direct consequence?
+A. Increased stroke volume
+B. Decreased end-systolic volume
+* C. Decreased stroke volume (Correct)
+D. Increased venous return
+E. Decreased end-diastolic volume
+Explanation (C): Afterload is the resistance the ventricle must overcome to eject blood. Increased afterload (as in hypertension) makes ejection harder, reducing the stroke volume if compensatory mechanisms are insufficient.
+Reference (C): Guyton & Hall, 14th ed., p. 115
+
+6. During inspiration, intrathoracic pressure decreases. What is the effect on venous return?
+* A. Venous return increases (Correct)
+B. Venous return decreases
+C. Venous return is unchanged
+D. Central venous pressure increases
+E. Right atrial pressure increases
+Explanation (A): A decrease in intrathoracic pressure during inspiration lowers right atrial pressure, creating a pressure gradient that draws more blood from the peripheral veins into the thorax, increasing venous return.
+Reference (A): Guyton & Hall, 14th ed., p. 233
+
+7. Which receptor type, when stimulated, causes an increase in heart rate and myocardial contractility?
+A. Muscarinic M2 receptors
+B. Alpha-1 adrenergic receptors
+* C. Beta-1 adrenergic receptors (Correct)
+D. Beta-2 adrenergic receptors
+E. Alpha-2 adrenergic receptors
+Explanation (C): Beta-1 adrenergic receptors are the predominant receptors in the heart. Their stimulation by catecholamines (epinephrine, norepinephrine) increases heart rate (chronotropy) and contractility (inotropy) via cAMP-mediated pathways.
+Reference (C): Guyton & Hall, 14th ed., p. 210
+
+8. A spirometry test shows a decreased FEV1/FVC ratio of 0.65 in a patient with chronic cough and smoking history. What pattern does this indicate?
+A. Restrictive lung disease
+* B. Obstructive lung disease (Correct)
+C. Mixed obstructive-restrictive pattern
+D. Normal spirometry pattern
+E. Neuromuscular weakness pattern
+Explanation (B): An FEV1/FVC ratio below 0.70 indicates obstruction to airflow. In this clinical context (smoking history, chronic cough), COPD is the most likely diagnosis. Restrictive disease shows a normal or elevated FEV1/FVC with reduced total lung capacity.
+Reference (B): West's Respiratory Physiology, 11th ed., p. 98
+
+9. Which of the following statements about the oxygen-hemoglobin dissociation curve is correct?
+A. A rightward shift increases hemoglobin's affinity for oxygen
+B. Decreased CO2 causes a rightward shift
+* C. Increased 2,3-DPG causes a rightward shift (Correct)
+D. Alkalosis causes a rightward shift
+E. Decreased temperature causes a rightward shift
+Explanation (C): Increased 2,3-DPG (2,3-bisphosphoglycerate) stabilizes the deoxyhemoglobin form, reducing oxygen affinity and shifting the curve rightward. This facilitates oxygen unloading to tissues. Alkalosis, decreased temperature, and decreased CO2 cause leftward shifts.
+Reference (C): West's Respiratory Physiology, 11th ed., p. 75
+
+10. A 30-year-old runner has a maximal oxygen consumption (VO2 max) of 60 mL/kg/min. At rest, his cardiac output is 5 L/min. According to the Fick principle, if his arteriovenous oxygen difference at rest is 5 mL O2/100 mL blood, what is his oxygen consumption at rest?
+A. 150 mL/min
+* B. 250 mL/min (Correct)
+C. 300 mL/min
+D. 400 mL/min
+E. 500 mL/min
+Explanation (B): Fick Principle: VO2 = Cardiac Output * (CaO2 - CvO2) = 5000 mL/min * (5 mL/100 mL) = 5000 * 0.05 = 250 mL/min.
+Reference (B): Guyton & Hall, 14th ed., p. 285

@@ -1,0 +1,99 @@
+Exam: Final Comprehensive Examination — Year 1 (Semester 1)
+Type: final
+Year: Year 1
+Module: Integrated Basic Sciences
+Subject: Anatomy, Biochemistry & Physiology
+Chapter: Integrated Systems
+Concept: Clinical Correlations
+Duration: 60
+Passing Score: 70
+
+1. A 55-year-old male undergoes a coronary angiogram revealing 80% stenosis of the left anterior descending (LAD) artery. Which area of the myocardium is at greatest risk of ischemia?
+* A. Anterior wall of left ventricle and interventricular septum (Correct)
+B. Posterior wall of left ventricle
+C. Right ventricle free wall
+D. Lateral wall of left ventricle
+E. Inferior wall and right ventricle
+Explanation (A): The LAD artery supplies the anterior wall of the left ventricle and the anterior two-thirds of the interventricular septum. Occlusion results in anterior wall MI with characteristic ST elevation in leads V1-V4.
+Reference (A): Gray's Anatomy for Students, 3rd ed., p. 190; Robbins Basic Pathology, 10th ed., p. 387
+
+2. Which enzyme deficiency causes phenylketonuria (PKU), leading to accumulation of phenylalanine?
+A. Tyrosinase
+B. Homogentisate oxidase
+* C. Phenylalanine hydroxylase (Correct)
+D. Tyrosine aminotransferase
+E. Fumarylacetoacetase
+Explanation (C): Phenylalanine hydroxylase (PAH) converts phenylalanine to tyrosine using tetrahydrobiopterin (BH4) as a cofactor. Its deficiency leads to phenylalanine accumulation and deficiency of downstream products (tyrosine, dopamine, melanin), causing intellectual disability if untreated.
+Reference (C): Harper's Illustrated Biochemistry, 31st ed., p. 263
+
+3. A 25-year-old student presents with fatigue and pallor. Blood smear shows hypochromic microcytic red cells. Serum ferritin is very low. What is the most likely diagnosis?
+A. Anemia of chronic disease
+B. Thalassemia minor
+* C. Iron deficiency anemia (Correct)
+D. Sideroblastic anemia
+E. B12 deficiency anemia
+Explanation (C): Iron deficiency anemia presents with hypochromic microcytic cells, low ferritin (best indicator of depleted iron stores), low serum iron, and high TIBC. It is the most common nutritional anemia worldwide.
+Reference (C): Robbins Basic Pathology, 10th ed., p. 449; Guyton & Hall, 14th ed., p. 433
+
+4. The brachial plexus root C5-C6 injury results in which classic clinical presentation?
+* A. Erb's palsy — arm hangs in "waiter's tip" position (Correct)
+B. Klumpke's palsy — claw hand deformity
+C. Wrist drop — radial nerve injury
+D. Ulnar claw — ring and little finger clawing
+E. Median nerve injury — "ape hand" deformity
+Explanation (A): C5-C6 roots form the upper trunk of the brachial plexus. Injury (Erb's palsy) denervates deltoid, biceps, and brachialis, resulting in the characteristic "waiter's tip" position: arm extended, internally rotated, forearm pronated.
+Reference (A): Gray's Anatomy for Students, 3rd ed., p. 733
+
+5. A cell in G2 phase of the cell cycle receives a signal to arrest. Which checkpoint is being activated?
+A. G1/S checkpoint
+B. Spindle assembly checkpoint
+* C. G2/M checkpoint (Correct)
+D. Restriction point
+E. S-phase checkpoint
+Explanation (C): The G2/M checkpoint ensures that DNA replication is complete and repairs any DNA damage before the cell enters mitosis. It is primarily regulated by CDK1/Cyclin B complexes. Damage signals activate p53 and Chk1/Chk2 to arrest the cell here.
+Reference (C): Molecular Biology of the Cell, 6th ed., p. 1055
+
+6. Which statement about the autonomic nervous system is correct regarding its neurotransmitters?
+A. Preganglionic sympathetic fibers release norepinephrine
+B. Postganglionic parasympathetic fibers release norepinephrine
+* C. All preganglionic autonomic fibers release acetylcholine (Correct)
+D. Postganglionic sympathetic fibers to sweat glands release norepinephrine
+E. Adrenal medulla releases acetylcholine directly into the bloodstream
+Explanation (C): All preganglionic neurons (both sympathetic and parasympathetic) release acetylcholine. Most postganglionic sympathetic neurons release norepinephrine, except those innervating sweat glands and some blood vessels, which release acetylcholine (cholinergic sympathetic).
+Reference (C): Guyton & Hall, 14th ed., p. 745
+
+7. A 40-year-old woman presents with a butterfly rash, joint pain, and positive ANA (antinuclear antibodies). Renal biopsy shows mesangial immune complex deposits. Which complement pathway is primarily activated in this condition?
+A. Alternative pathway
+B. Lectin pathway
+* C. Classical pathway (Correct)
+D. Terminal complement cascade only
+E. No complement involvement
+Explanation (C): Systemic Lupus Erythematosus (SLE) involves immune complex deposition, which activates the classical complement pathway via C1q binding to the Fc region of IgG and IgM in the complexes. This leads to glomerulonephritis.
+Reference (C): Robbins Basic Pathology, 10th ed., p. 142
+
+8. Acetyl-CoA enters the citric acid cycle (TCA) by combining with which molecule?
+A. Pyruvate
+B. Malate
+* C. Oxaloacetate (Correct)
+D. Alpha-ketoglutarate
+E. Succinate
+Explanation (C): Acetyl-CoA (2-carbon) condenses with oxaloacetate (4-carbon) via citrate synthase to form citrate (6-carbon) as the first step of the TCA cycle. Oxaloacetate is regenerated at the end of each cycle turn.
+Reference (C): Harper's Illustrated Biochemistry, 31st ed., p. 158
+
+9. A 70-year-old male with severe aortic stenosis has a narrow pulse pressure and a harsh systolic ejection murmur at the right upper sternal border radiating to the carotids. Which hemodynamic change is most directly responsible for the narrow pulse pressure?
+A. Decreased heart rate
+B. Increased peripheral vascular resistance
+* C. Decreased stroke volume (Correct)
+D. Increased venous return
+E. Decreased diastolic pressure
+Explanation (C): Severe aortic stenosis obstructs left ventricular outflow, reducing stroke volume. Pulse pressure (Systolic BP - Diastolic BP) is primarily determined by stroke volume divided by arterial compliance. Reduced stroke volume leads to a narrow pulse pressure (e.g., 90/75 mmHg).
+Reference (C): Guyton & Hall, 14th ed., p. 228; Braunwald's Heart Disease, 11th ed., p. 1448
+
+10. A newborn presents with ambiguous genitalia, hyperkalemia, and hyponatremia. Serum 17-hydroxyprogesterone is markedly elevated. What enzyme deficiency is responsible?
+A. 11-beta hydroxylase
+* B. 21-hydroxylase (Correct)
+C. 17-alpha hydroxylase
+D. Aromatase
+E. 3-beta hydroxysteroid dehydrogenase
+Explanation (B): 21-hydroxylase deficiency is the most common cause of congenital adrenal hyperplasia (CAH). It blocks cortisol and aldosterone synthesis, causing: (1) accumulation of 17-OHP and androgens (virilization/ambiguous genitalia), (2) salt-wasting from aldosterone deficiency (hyponatremia, hyperkalemia), and (3) ACTH elevation driving adrenal hyperplasia.
+Reference (B): Williams Textbook of Endocrinology, 14th ed., p. 924; Robbins Basic Pathology, 10th ed., p. 524

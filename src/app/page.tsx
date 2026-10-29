@@ -132,7 +132,7 @@ export default function StudentDashboard() {
           overflow: 'hidden',
         }}
       >
-        <div style={{ maxWidth: '640px' }}>
+        <div style={{ maxWidth: '640px', width: '100%' }}>
           <div
             style={{
               display: 'inline-flex',
@@ -149,7 +149,7 @@ export default function StudentDashboard() {
             }}
           >
             <GraduationCap size={15} />
-            <span>MEDICAL BOARD & CLINICAL CLERKSHIP PLATFORM</span>
+            <span>MEDICAL BOARD &amp; CLINICAL CLERKSHIP PLATFORM</span>
           </div>
 
           <h1 style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1.25, marginBottom: '0.75rem', color: 'var(--text-main)' }}>
@@ -160,7 +160,7 @@ export default function StudentDashboard() {
             Practice complete past papers or drill targeted high-yield concepts with per-choice source citations.
           </p>
 
-          <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+          <div className="hero-cta-group" style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
             <Link href="/exams" className="btn btn-primary btn-lg">
               <span>Start Complete Exam</span>
               <Play size={16} fill="#ffffff" />
@@ -278,6 +278,7 @@ export default function StudentDashboard() {
 
       {/* Primary Performance Metric Cards */}
       <div
+        className="stats-grid-4"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -289,7 +290,7 @@ export default function StudentDashboard() {
         <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Exams Completed</span>
-            <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4' }}>
+            <div className="icon-box-cyan" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4' }}>
               <FileCheck2 size={18} />
             </div>
           </div>
@@ -305,7 +306,7 @@ export default function StudentDashboard() {
         <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Questions Answered</span>
-            <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+            <div className="icon-box-green" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
               <CheckCircle2 size={18} />
             </div>
           </div>
@@ -313,7 +314,7 @@ export default function StudentDashboard() {
             {stats?.questions_answered ?? 0}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
-            Across all practice sessions & exams
+            Across all practice sessions &amp; exams
           </div>
         </div>
 
@@ -321,7 +322,7 @@ export default function StudentDashboard() {
         <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Overall Accuracy</span>
-            <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+            <div className="icon-box-amber" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
               <TrendingDown size={18} />
             </div>
           </div>
@@ -337,7 +338,7 @@ export default function StudentDashboard() {
         <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Question Bank</span>
-            <div style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc' }}>
+            <div className="icon-box-purple" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc' }}>
               <Bookmark size={18} />
             </div>
           </div>
@@ -345,25 +346,25 @@ export default function StudentDashboard() {
             {stats?.bookmarks_count ?? 0}
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
-            Flagged & categorized questions
+            Flagged &amp; categorized questions
           </div>
         </div>
       </div>
 
       {/* Main Grid: Fast Entry Points & Recent Activity */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+      <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
         {/* Left Column: Quick Entry Portals */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <Layers size={20} color="#06b6d4" />
-            <span>Study Modes & Exploration</span>
+            <span>Study Modes &amp; Exploration</span>
           </h2>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Complete Exams Portal */}
             <Link
               href="/exams"
-              className="card-3d"
+              className="card-3d study-mode-card"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -374,6 +375,7 @@ export default function StudentDashboard() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div
+                  className="icon-box-cyan"
                   style={{
                     width: '46px',
                     height: '46px',
@@ -384,6 +386,7 @@ export default function StudentDashboard() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#38bdf8',
+                    flexShrink: 0,
                   }}
                 >
                   <FileCheck2 size={22} />
@@ -403,7 +406,7 @@ export default function StudentDashboard() {
             {/* Study by Subject Hierarchy Practice */}
             <Link
               href="/study"
-              className="card-3d"
+              className="card-3d study-mode-card"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -415,6 +418,7 @@ export default function StudentDashboard() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div
+                  className="icon-box-teal"
                   style={{
                     width: '46px',
                     height: '46px',
@@ -426,13 +430,14 @@ export default function StudentDashboard() {
                     justifyContent: 'center',
                     color: '#2dd4bf',
                     boxShadow: '0 4px 12px rgba(13, 148, 136, 0.25)',
+                    flexShrink: 0,
                   }}
                 >
                   <BookOpen size={22} />
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>
-                    Study by Subject (Chapters & Concepts)
+                    Study by Subject (Chapters &amp; Concepts)
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     Drill questions by medical subject independent of exams
@@ -445,7 +450,7 @@ export default function StudentDashboard() {
             {/* Repeated Concepts Section */}
             <Link
               href="/repeated-concepts"
-              className="card-3d"
+              className="card-3d study-mode-card"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -456,6 +461,7 @@ export default function StudentDashboard() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div
+                  className="icon-box-purple"
                   style={{
                     width: '46px',
                     height: '46px',
@@ -466,6 +472,7 @@ export default function StudentDashboard() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#c084fc',
+                    flexShrink: 0,
                   }}
                 >
                   <Sparkles size={22} />
@@ -485,7 +492,7 @@ export default function StudentDashboard() {
             {/* Weakness Analysis Portal */}
             <Link
               href="/weakness-analysis"
-              className="card-3d"
+              className="card-3d study-mode-card"
               style={{
                 padding: '1.5rem',
                 borderRadius: 'var(--radius-lg)',
@@ -496,6 +503,7 @@ export default function StudentDashboard() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div
+                  className="icon-box-rose"
                   style={{
                     width: '46px',
                     height: '46px',
@@ -506,6 +514,7 @@ export default function StudentDashboard() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#fb7185',
+                    flexShrink: 0,
                   }}
                 >
                   <TrendingDown size={22} />

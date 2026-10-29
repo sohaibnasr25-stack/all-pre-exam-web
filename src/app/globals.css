@@ -320,6 +320,39 @@ button {
     0 32px 64px -8px rgba(2, 132, 199, 0.06);
 }
 
+/* ── Icon containers inside card-3d: fix light mode visibility ── */
+[data-theme="light"] .card-3d .icon-box-cyan {
+  background: rgba(2, 132, 199, 0.12) !important;
+  border-color: rgba(2, 132, 199, 0.25) !important;
+  color: #0284c7 !important;
+}
+[data-theme="light"] .card-3d .icon-box-teal {
+  background: rgba(13, 148, 136, 0.12) !important;
+  border-color: rgba(13, 148, 136, 0.3) !important;
+  color: #0d9488 !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15) !important;
+}
+[data-theme="light"] .card-3d .icon-box-purple {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  color: #4f46e5 !important;
+}
+[data-theme="light"] .card-3d .icon-box-rose {
+  background: rgba(225, 29, 72, 0.1) !important;
+  border-color: rgba(225, 29, 72, 0.2) !important;
+  color: #e11d48 !important;
+}
+[data-theme="light"] .card-3d .icon-box-green {
+  background: rgba(5, 150, 105, 0.1) !important;
+  border-color: rgba(5, 150, 105, 0.2) !important;
+  color: #059669 !important;
+}
+[data-theme="light"] .card-3d .icon-box-amber {
+  background: rgba(217, 119, 6, 0.1) !important;
+  border-color: rgba(217, 119, 6, 0.2) !important;
+  color: #d97706 !important;
+}
+
 [data-theme="light"] .card-3d::before {
   background: linear-gradient(
     135deg,
@@ -400,6 +433,37 @@ button {
     0 0 18px rgba(6, 182, 212, 0.25) !important;
 }
 
+/* ── nav-item-3d LIGHT THEME ── */
+[data-theme="light"] .nav-item-3d {
+  color: var(--text-muted);
+  background: linear-gradient(145deg, rgba(241, 245, 249, 0.9) 0%, rgba(226, 232, 240, 0.85) 100%);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 5px rgba(15, 23, 42, 0.08);
+}
+[data-theme="light"] .nav-item-3d:hover {
+  color: var(--text-main);
+  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: rgba(2, 132, 199, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 6px 16px rgba(15, 23, 42, 0.1),
+    0 0 12px rgba(2, 132, 199, 0.12);
+}
+[data-theme="light"] .nav-item-3d.active,
+[data-theme="light"] .nav-item-3d[data-active="true"] {
+  color: #0284c7 !important;
+  background: linear-gradient(145deg, rgba(2, 132, 199, 0.12) 0%, rgba(14, 165, 233, 0.06) 100%) !important;
+  border: 1px solid rgba(2, 132, 199, 0.45) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 12px rgba(15, 23, 42, 0.1),
+    0 0 14px rgba(2, 132, 199, 0.15) !important;
+}
+
 /* ==========================================================
    3D FLOATING TABS (Admin & Option Lists)
    ========================================================== */
@@ -447,6 +511,37 @@ button {
     0 0 16px rgba(6, 182, 212, 0.22) !important;
 }
 
+/* ── tab-3d LIGHT THEME ── */
+[data-theme="light"] .tab-3d {
+  color: var(--text-muted);
+  background: linear-gradient(145deg, rgba(241, 245, 249, 0.95) 0%, rgba(226, 232, 240, 0.9) 100%);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(15, 23, 42, 0.07);
+}
+[data-theme="light"] .tab-3d:hover {
+  color: var(--text-main);
+  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: rgba(2, 132, 199, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 5px 14px rgba(15, 23, 42, 0.09),
+    0 0 12px rgba(2, 132, 199, 0.1);
+}
+[data-theme="light"] .tab-3d.active,
+[data-theme="light"] .tab-3d[data-active="true"] {
+  color: #0284c7 !important;
+  background: linear-gradient(145deg, rgba(2, 132, 199, 0.12) 0%, rgba(14, 165, 233, 0.06) 100%) !important;
+  border: 1px solid rgba(2, 132, 199, 0.4) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    0 0 14px rgba(2, 132, 199, 0.12) !important;
+}
+
 /* ==========================================================
    3D FLOATING FILTER PILLS (Bookmarks, Weakness & Study)
    ========================================================== */
@@ -481,6 +576,24 @@ button {
 
 .pill-3d:active {
   transform: translateY(0);
+}
+
+/* ── pill-3d LIGHT THEME ── */
+[data-theme="light"] .pill-3d {
+  color: var(--text-muted);
+  background: linear-gradient(145deg, rgba(241, 245, 249, 0.95) 0%, rgba(226, 232, 240, 0.9) 100%);
+  border: 1px solid rgba(100, 116, 139, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 3px 6px rgba(15, 23, 42, 0.07);
+}
+[data-theme="light"] .pill-3d:hover {
+  color: var(--text-main);
+  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 6px 16px rgba(15, 23, 42, 0.1);
 }
 
 /* Color glow variants for pill-3d */
@@ -542,6 +655,63 @@ button {
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     0 4px 14px rgba(0, 0, 0, 0.4),
     0 0 16px rgba(13, 148, 136, 0.25) !important;
+}
+
+/* ── pill-3d color variants: LIGHT THEME overrides ── */
+[data-theme="light"] .pill-3d-cyan.active,
+[data-theme="light"] .pill-3d-cyan[data-active="true"] {
+  color: #0284c7 !important;
+  background: linear-gradient(145deg, rgba(2, 132, 199, 0.12) 0%, rgba(14, 165, 233, 0.06) 100%) !important;
+  border: 1.5px solid #0284c7 !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 14px rgba(15, 23, 42, 0.09),
+    0 0 14px rgba(2, 132, 199, 0.15) !important;
+}
+[data-theme="light"] .pill-3d-amber.active,
+[data-theme="light"] .pill-3d-amber[data-active="true"] {
+  color: #d97706 !important;
+  background: linear-gradient(145deg, rgba(217, 119, 6, 0.12) 0%, rgba(245, 158, 11, 0.06) 100%) !important;
+  border: 1.5px solid #d97706 !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 14px rgba(15, 23, 42, 0.09),
+    0 0 14px rgba(217, 119, 6, 0.15) !important;
+}
+[data-theme="light"] .pill-3d-blue.active,
+[data-theme="light"] .pill-3d-blue[data-active="true"] {
+  color: #0369a1 !important;
+  background: linear-gradient(145deg, rgba(3, 105, 161, 0.12) 0%, rgba(2, 132, 199, 0.06) 100%) !important;
+  border: 1.5px solid #0369a1 !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 14px rgba(15, 23, 42, 0.09),
+    0 0 14px rgba(3, 105, 161, 0.15) !important;
+}
+[data-theme="light"] .pill-3d-rose.active,
+[data-theme="light"] .pill-3d-rose[data-active="true"] {
+  color: #e11d48 !important;
+  background: linear-gradient(145deg, rgba(225, 29, 72, 0.1) 0%, rgba(244, 63, 94, 0.05) 100%) !important;
+  border: 1.5px solid #e11d48 !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 14px rgba(15, 23, 42, 0.09),
+    0 0 14px rgba(225, 29, 72, 0.15) !important;
+}
+[data-theme="light"] .pill-3d-teal.active,
+[data-theme="light"] .pill-3d-teal[data-active="true"] {
+  color: #0d9488 !important;
+  background: linear-gradient(145deg, rgba(13, 148, 136, 0.12) 0%, rgba(20, 184, 166, 0.06) 100%) !important;
+  border: 1.5px solid #0d9488 !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 14px rgba(15, 23, 42, 0.09),
+    0 0 14px rgba(13, 148, 136, 0.15) !important;
 }
 
 /* Dynamic Hero Banner for Dark and Light Modes */
@@ -1005,6 +1175,32 @@ dialog::backdrop {
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       0 2px 6px rgba(0, 0, 0, 0.35) !important;
   }
+  /* ── Light theme: fix card-3d shadow on mobile ── */
+  [data-theme="light"] .card-3d {
+    border: 1px solid rgba(100, 116, 139, 0.2) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 2px 6px rgba(15, 23, 42, 0.08),
+      0 10px 22px rgba(15, 23, 42, 0.1),
+      0 0 0 1px rgba(2, 132, 199, 0.06) !important;
+  }
+  [data-theme="light"] .card-3d:hover,
+  [data-theme="light"] .card-3d:active {
+    border-color: rgba(2, 132, 199, 0.4) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.98),
+      0 4px 10px rgba(15, 23, 42, 0.1),
+      0 16px 32px rgba(15, 23, 42, 0.12),
+      0 0 14px rgba(2, 132, 199, 0.12) !important;
+  }
+  [data-theme="light"] .nav-item-3d, 
+  [data-theme="light"] .tab-3d, 
+  [data-theme="light"] .pill-3d {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 2px 6px rgba(15, 23, 42, 0.08) !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1017,6 +1213,180 @@ dialog::backdrop {
   .badge {
     padding: 0.2rem 0.5rem;
     font-size: 0.7rem;
+  }
+}
+
+/* ==========================================================
+   MOBILE LAYOUT — Complete Restructuring for Usability
+   ========================================================== */
+
+/* Mobile bottom navigation bar */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-subtle);
+  padding: 0.5rem 0 env(safe-area-inset-bottom, 0.5rem);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .mobile-bottom-nav {
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
+}
+
+.mobile-bottom-nav-inner {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  flex: 1;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 52px;
+}
+
+.mobile-nav-item.active {
+  color: var(--primary);
+}
+
+[data-theme="light"] .mobile-nav-item.active {
+  color: #0284c7;
+}
+
+.mobile-nav-item:active {
+  background: var(--bg-surface-hover);
+  border-radius: var(--radius-sm);
+}
+
+.mobile-nav-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mobile-nav-item.active .mobile-nav-icon {
+  transform: scale(1.15);
+}
+
+/* Stacked page content to allow bottom nav */
+.mobile-page-content {
+  padding-bottom: 0;
+}
+
+@media (max-width: 990px) {
+  /* Show bottom nav on mobile/tablet */
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  /* Add bottom padding to page so bottom nav doesn't overlap content */
+  body {
+    padding-bottom: 72px;
+  }
+
+  /* Dashboard hero banner — stack vertically and compact */
+  .hero-welcome-banner {
+    flex-direction: column !important;
+    padding: 1.5rem 1rem !important;
+    gap: 1rem !important;
+  }
+  .hero-welcome-banner > div:first-child {
+    max-width: 100% !important;
+  }
+  .hero-curriculum-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  /* Hero h1: smaller on mobile */
+  .hero-welcome-banner h1 {
+    font-size: 1.7rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Hero CTA buttons: full width stack */
+  .hero-cta-group {
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+  .hero-cta-group .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Dashboard stats grid: 2×2 on mobile */
+  .stats-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.85rem !important;
+  }
+  .stats-grid-4 .card-3d {
+    padding: 1rem !important;
+  }
+  .stats-grid-4 .card-3d [style*="font-size: 2.2rem"] {
+    font-size: 1.75rem !important;
+  }
+
+  /* Main 2-col grid: stack on mobile */
+  .dashboard-main-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Study-mode cards: more compact on mobile */
+  .study-mode-card {
+    padding: 1rem 1.1rem !important;
+  }
+
+  /* Container padding for mobile */
+  .container, .container-narrow {
+    padding: 0 0.85rem;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Stats grid: still 2 columns but tighter */
+  .stats-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+
+  /* Page top padding: reduce on small screens */
+  .container[style*="padding: 2.5rem"] {
+    padding-top: 1.25rem !important;
+    padding-bottom: 4.5rem !important;
+  }
+
+  /* Curriculum card rows: compact */
+  .hero-curriculum-card [style*="font-size: 0.92rem"] {
+    font-size: 0.82rem !important;
   }
 }
 
