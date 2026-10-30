@@ -31,6 +31,7 @@ import {
   Square,
   ChevronDown,
   ChevronUp,
+  GitMerge,
 } from 'lucide-react';
 import {
   AcademicYear,
@@ -190,6 +191,56 @@ export default function AdminDashboardPage() {
       { choice_letter: 'D', explanation_text: '', is_why_correct: false, is_why_incorrect: true, source_document: '', source_page: '', source_reference: '' },
     ],
   });
+
+  // Merge Modules State
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [sourceModuleToMerge, setSourceModuleToMerge] = useState<Module | null>(null);
+  const [targetModuleIdToMerge, setTargetModuleIdToMerge] = useState<string>('');
+  const [mergeLoading, setMergeLoading] = useState(false);
+
+  const openMergeModal = (mod: Module) => {
+    setSourceModuleToMerge(mod);
+    const otherMods = modules.filter((m) => m.id !== mod.id);
+    setTargetModuleIdToMerge(otherMods[0]?.id || '');
+    setMergeModalOpen(true);
+  };
+
+  const handleExecuteMerge = async () => {
+    if (!sourceModuleToMerge || !targetModuleIdToMerge) return;
+    const targetMod = modules.find((m) => m.id === targetModuleIdToMerge);
+    if (
+      !confirm(
+        `هل أنت متأكد من دمج الموديول "${sourceModuleToMerge.name}" في "${targetMod?.name || targetModuleIdToMerge}"؟\nسيتم نقل كافة الامتحانات والأسئلة والمواد وحذف الموديول المصدر نهائياً.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setMergeLoading(true);
+      const res = await adminFetch('/api/admin/modules/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_module_id: sourceModuleToMerge.id,
+          target_module_id: targetModuleIdToMerge,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', data.message || 'تم دمج الموديولين بنجاح!');
+        setMergeModalOpen(false);
+        setSourceModuleToMerge(null);
+        await refreshAllData();
+      } else {
+        showFeedback('error', data.message || 'فشل دمج الموديولين');
+      }
+    } catch (err) {
+      showFeedback('error', 'حدث خطأ أثناء الدمج: ' + String(err));
+    } finally {
+      setMergeLoading(false);
+    }
+  };
 
   // Admin authenticated fetch wrapper that always attaches Bearer token & cookies (no-cache)
   const adminFetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -1427,9 +1478,19 @@ D) Normal myocardium with subtle wavy fibers only
                                 </div>
                                 <div style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>كود: {mod.code}</div>
                               </div>
-                              <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>
-                                {exams.filter((e) => e.module_id === mod.id).length} امتحانات
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>
+                                  {exams.filter((e) => e.module_id === mod.id).length} امتحانات
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => openMergeModal(mod)}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#c084fc', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  title="دمج هذا الموديول مع موديول آخر"
+                                >
+                                  <GitMerge size={13} />
+                                </button>
+                              </div>
                             </div>
 
                             {/* Transfer Module to another Academic Year */}
@@ -1555,6 +1616,16 @@ D) Normal myocardium with subtle wavy fibers only
                       >
                         <Plus size={14} />
                         <span>إضافة امتحان لهذا الموديول</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openMergeModal(mod)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ gap: '0.35rem', fontSize: '0.82rem', borderColor: 'rgba(168, 85, 247, 0.4)', color: '#c084fc' }}
+                        title="دمج هذا الموديول مع موديول آخر ونقل كافة الامتحانات والأسئلة"
+                      >
+                        <GitMerge size={13} />
+                        <span>دمج الموديول</span>
                       </button>
                       <button
                         onClick={async () => {
@@ -1970,12 +2041,16 @@ D) Normal myocardium with subtle wavy fibers only
                 onClick={async () => {
                   if (!confirm('تحذير: سيتم مسح وتفريغ كافة الامتحانات والأسئلة والمناهج والنتائج لتصبح قاعدة البيانات السحابية والمحلية خالية تماماً (Clean Slate) مع الاحتفاظ بحسابات الأدمن. هل تريد المتابعة؟')) return;
                   try {
-                    const res = await adminFetch('/api/admin/reset', { method: 'POST' });
+                    const res = await adminFetch('/api/admin/reset', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ mode: 'clean_slate' }),
+                    });
                     const d = await res.json();
                     if (d.success) {
                       try {
                         Object.keys(localStorage).forEach((k) => {
-                          if (k.startsWith('omnimed_')) {
+                          if (k.startsWith('omnimed_') && k !== 'omnimed_admin_token' && k !== 'omnimed_admin_user') {
                             localStorage.removeItem(k);
                           }
                         });
@@ -1994,6 +2069,33 @@ D) Normal myocardium with subtle wavy fibers only
               >
                 <RotateCcw size={15} />
                 <span>مسح وتفريغ قاعدة البيانات بالكامل (Clean Slate Wipe)</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  if (!confirm('هل تريد استعادة البيانات النموذجية الأولية للاختبار؟ سيتم إدراج امتحانات وأسئلة تجريبية.')) return;
+                  try {
+                    const res = await adminFetch('/api/admin/reset', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ mode: 'seed' }),
+                    });
+                    const d = await res.json();
+                    if (d.success) {
+                      showFeedback('success', 'تمت استعادة البيانات النموذجية بنجاح!');
+                      await refreshAllData();
+                    } else {
+                      showFeedback('error', d.message || d.error || 'فشل استعادة البيانات');
+                    }
+                  } catch (err) {
+                    showFeedback('error', 'خطأ أثناء استعادة البيانات: ' + String(err));
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{ gap: '0.4rem' }}
+              >
+                <Sparkles size={15} />
+                <span>استعادة البيانات النموذجية (Reset to Sample Seed)</span>
               </button>
             </div>
           </div>
@@ -4134,6 +4236,125 @@ C) Choice C"
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: MERGE MODULES */}
+      {mergeModalOpen && sourceModuleToMerge && (
+        <div className="modal-backdrop">
+          <div
+            className="glass-panel animate-fade-in"
+            style={{
+              maxWidth: '560px',
+              width: '100%',
+              padding: '2rem',
+              borderRadius: 'var(--radius-xl)',
+              border: '1.5px solid rgba(168, 85, 247, 0.4)',
+              background: 'var(--bg-surface)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: 'rgba(168, 85, 247, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#c084fc',
+                  }}
+                >
+                  <GitMerge size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>دمج موديول مع موديول آخر</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    نقل كافة المواد والشباتر والامتحانات والأسئلة وحذف الموديول المكرر
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMergeModalOpen(false)}
+                className="btn-icon"
+                style={{ background: 'transparent' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: '1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                fontSize: '0.85rem',
+                color: 'var(--text-main)',
+                lineHeight: 1.5,
+              }}
+            >
+              <strong>الموديول المصدر المراد نقله وحذفه:</strong>
+              <div style={{ marginTop: '0.25rem', fontWeight: 700, color: '#f87171' }}>
+                {sourceModuleToMerge.name} ({sourceModuleToMerge.code})
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                يحتوي على: {exams.filter((e) => e.module_id === sourceModuleToMerge.id).length} امتحانات •{' '}
+                {questions.filter((q) => q.module_id === sourceModuleToMerge.id).length} أسئلة
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                اختر الموديول الهدف (الموديول الذي سيتم نقل البيانات إليه والاحتفاظ به):
+              </label>
+              <select
+                value={targetModuleIdToMerge}
+                onChange={(e) => setTargetModuleIdToMerge(e.target.value)}
+                className="form-select"
+                style={{ fontSize: '0.92rem', padding: '0.75rem' }}
+              >
+                <option value="">اختر الموديول الهدف...</option>
+                {modules
+                  .filter((m) => m.id !== sourceModuleToMerge.id)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.code})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+              <button
+                type="button"
+                onClick={() => setMergeModalOpen(false)}
+                className="btn btn-secondary"
+                disabled={mergeLoading}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteMerge}
+                disabled={mergeLoading || !targetModuleIdToMerge}
+                className="btn btn-primary"
+                style={{
+                  background: 'linear-gradient(135deg, #9333ea, #7c3aed)',
+                  gap: '0.5rem',
+                }}
+              >
+                <GitMerge size={16} />
+                <span>{mergeLoading ? 'جاري الدمج والنقل...' : 'تأكيد دمج الموديولين الآن'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

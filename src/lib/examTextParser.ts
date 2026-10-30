@@ -93,6 +93,86 @@ function splitMultiExamChunks(text: string): string[] {
   return chunks.length > 1 ? chunks : [text];
 }
 
+function distributeChoiceExplanations(choicesList: ParsedChoice[]): void {
+  // Check if one choice holds a combined block while other choices are empty or have only "Correct:"/"Incorrect:"
+  const bigExpChoice = choicesList.find(
+    (c) =>
+      c.explanation &&
+      c.explanation.length > 80 &&
+      choicesList.filter(
+        (o) =>
+          !o.explanation ||
+          /^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?$/i.test(o.explanation.trim())
+      ).length >= 2
+  );
+
+  if (bigExpChoice && bigExpChoice.explanation) {
+    const rawText = bigExpChoice.explanation;
+    // Split into sentences / paragraphs
+    const sentences = rawText
+      .split(/(?<=\.)\s+(?=[A-Z]|Incorrect:|Correct:|صحيح|غير صحيح|خطأ)/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const assigned: Record<string, string> = {};
+    for (const choice of choicesList) {
+      const choiceKeywords = choice.text
+        .toLowerCase()
+        .split(/\W+/)
+        .filter((w) => w.length > 3);
+      let bestSentence = '';
+      let bestScore = 0;
+
+      for (let i = 0; i < sentences.length; i++) {
+        const s = sentences[i];
+        const sLower = s.toLowerCase();
+        let score = 0;
+        for (const kw of choiceKeywords) {
+          if (sLower.includes(kw)) score += 2;
+        }
+        if (
+          sLower.includes(`(${choice.letter.toLowerCase()})`) ||
+          sLower.includes(`choice ${choice.letter.toLowerCase()}`) ||
+          sLower.includes(`option ${choice.letter.toLowerCase()}`)
+        ) {
+          score += 5;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestSentence = s;
+        }
+      }
+
+      if (bestSentence && bestScore > 0) {
+        assigned[choice.letter] = bestSentence
+          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '')
+          .trim();
+      }
+    }
+
+    if (Object.keys(assigned).length === choicesList.length) {
+      for (const c of choicesList) {
+        c.explanation = assigned[c.letter];
+      }
+    } else if (sentences.length === choicesList.length) {
+      choicesList.forEach((c, idx) => {
+        c.explanation = sentences[idx]
+          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '')
+          .trim();
+      });
+    }
+  }
+
+  // Clean redundant leading labels like "Correct: " or "Incorrect: " across all choices
+  for (const c of choicesList) {
+    if (c.explanation) {
+      c.explanation = c.explanation
+        .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '')
+        .trim();
+    }
+  }
+}
+
 /**
  * Intelligent text parser for exams in .txt format (Arabic & English supported)
  * Pure function: Safe for both Client Component browser usage and Server-side execution.
@@ -409,12 +489,27 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
         const target = findTargetChoice(targetLetter);
         if (target) {
           target.explanation = (target.explanation ? target.explanation + ' ' : '') + explText;
+          if (/^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s]|$)/i.test(explText)) {
+            target.is_correct = true;
+          } else if (/^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s]|$)/i.test(explText)) {
+            target.is_correct = false;
+          }
         } else if (currentChoice) {
           currentChoice.explanation = (currentChoice.explanation ? currentChoice.explanation + ' ' : '') + explText;
+          if (/^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s]|$)/i.test(explText)) {
+            currentChoice.is_correct = true;
+          } else if (/^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s]|$)/i.test(explText)) {
+            currentChoice.is_correct = false;
+          }
         } else {
           const correctChoice = choices.find((c) => c.is_correct) || choices[choices.length - 1];
           if (correctChoice) {
             correctChoice.explanation = (correctChoice.explanation ? correctChoice.explanation + ' ' : '') + explText;
+            if (/^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s]|$)/i.test(explText)) {
+              correctChoice.is_correct = true;
+            } else if (/^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s]|$)/i.test(explText)) {
+              correctChoice.is_correct = false;
+            }
           }
         }
         lastTargetField = 'explanation';
@@ -502,19 +597,30 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
     // Sort choices alphabetically by letter
     choices.sort((a, b) => a.letter.localeCompare(b.letter));
 
-    // Choice explanations: mark choices explicitly marked as Incorrect
+    // Choice explanations: mark choices explicitly marked as Incorrect or Correct
     choices.forEach((c) => {
-      if (c.explanation && /Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation)) {
-        c.is_correct = false;
+      if (c.explanation) {
+        const trimmedExp = c.explanation.trim();
+        if (
+          /^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s—–\-]|$)/i.test(trimmedExp) ||
+          /Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation)
+        ) {
+          c.is_correct = false;
+        } else if (
+          /^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s—–\-]|$)/i.test(trimmedExp) ||
+          /Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i.test(c.explanation)
+        ) {
+          c.is_correct = true;
+        }
       }
     });
 
-    // Check if any explanation explicitly indicates the correct choice
+    // Check if any explanation explicitly indicates the correct choice letter
     const correctExpl = choices.find(
-      (c) => c.explanation && /Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i.test(c.explanation)
+      (c) => c.explanation && /Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i.test(c.explanation)
     );
     if (correctExpl && correctExpl.explanation) {
-      const m = correctExpl.explanation.match(/Explanation\s*\(([A-Ea-e])\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i);
+      const m = correctExpl.explanation.match(/Explanation\s*\(([A-Ea-eأ-ي])\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i);
       if (m) {
         const correctLetter = (arabicToLatinLetter[m[1]] || m[1]).toUpperCase();
         choices.forEach((c) => {
@@ -528,6 +634,15 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       choices.forEach((c) => {
         c.is_correct = c.letter === explicitAnswerLetter;
       });
+    } else {
+      // If any choice is explicitly marked correct, ensure others are false
+      const confirmedCorrect = choices.filter((c) => c.is_correct);
+      if (confirmedCorrect.length === 1) {
+        const correctLetter = confirmedCorrect[0].letter;
+        choices.forEach((c) => {
+          c.is_correct = c.letter === correctLetter;
+        });
+      }
     }
 
     if (choices.length === 0) {
@@ -539,9 +654,11 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       );
     } else {
       if (!choices.some((c) => c.is_correct)) {
-        // Fallback: pick first choice that does NOT have an "Incorrect" flag in its explanation
+        // Fallback: pick candidate that does NOT have "Incorrect" flag in explanation or is_correct === false
         const safeCandidate = choices.find(
-          (c) => !c.explanation || !/Explanation\s*\([A-Ea-e]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation)
+          (c) =>
+            c.is_correct !== false &&
+            (!c.explanation || !/^(?:Incorrect|غير\s*صحيح|خطأ)|Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation.trim()))
         );
         if (safeCandidate) {
           safeCandidate.is_correct = true;
@@ -550,6 +667,9 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
         }
       }
     }
+
+    // Distribute multi-choice explanations & clean up redundant markers
+    distributeChoiceExplanations(choices);
 
     return {
       question_number: qNumber,

@@ -1274,6 +1274,30 @@ export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<vo
       if (coErr) console.error('[Supabase Sync] concepts error:', coErr);
     }
 
+    // Ensure all exams have valid academic_year_id from their module if missing
+    store.exams.forEach((e) => {
+      if (!validYearIds.has(e.academic_year_id)) {
+        const parentMod = store.modules.find((m) => m.id === e.module_id);
+        if (parentMod && validYearIds.has(parentMod.academic_year_id)) {
+          e.academic_year_id = parentMod.academic_year_id;
+        } else if (store.academic_years[0]) {
+          e.academic_year_id = store.academic_years[0].id;
+        }
+      }
+    });
+
+    // Ensure all questions have valid academic_year_id from their module if missing
+    store.questions.forEach((q) => {
+      if (!validYearIds.has(q.academic_year_id)) {
+        const parentMod = store.modules.find((m) => m.id === q.module_id);
+        if (parentMod && validYearIds.has(parentMod.academic_year_id)) {
+          q.academic_year_id = parentMod.academic_year_id;
+        } else if (store.academic_years[0]) {
+          q.academic_year_id = store.academic_years[0].id;
+        }
+      }
+    });
+
     // 6. Sync exams (only valid year & module)
     const validExams = store.exams.filter((e) => validYearIds.has(e.academic_year_id) && validModIds.has(e.module_id));
     if (validExams.length > 0) {
@@ -1568,22 +1592,43 @@ export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
   const yearLookup = new Map(allYears.map((y) => [y.id, y]));
   const examLookup = new Map(allExams.map((e) => [e.id, e]));
 
-  // Group questions by concept
-  const conceptMap = new Map<string, Question[]>();
+  // Group questions by normalized concept name so identical concepts with different IDs are aggregated
+  const conceptMap = new Map<string, { conceptId: string; conceptName: string; questions: Question[] }>();
   allQuestions.forEach((q) => {
-    if (!q.concept_id) return;
-    const existing = conceptMap.get(q.concept_id) || [];
-    existing.push(q);
-    conceptMap.set(q.concept_id, existing);
+    let name = '';
+    let cId = q.concept_id || '';
+    if (q.concept_id) {
+      const c = conceptLookup.get(q.concept_id);
+      if (c) {
+        name = c.name;
+        cId = c.id;
+      }
+    }
+    if (!name && (q as any).concept?.name) {
+      name = (q as any).concept.name;
+      if (!cId && (q as any).concept.id) cId = (q as any).concept.id;
+    }
+
+    const normKey = name.trim().toLowerCase();
+    if (!normKey) return;
+
+    const existing = conceptMap.get(normKey);
+    if (existing) {
+      existing.questions.push(q);
+    } else {
+      conceptMap.set(normKey, {
+        conceptId: cId || `concept-${normKey}`,
+        conceptName: name.trim(),
+        questions: [q],
+      });
+    }
   });
 
   const stats: RepeatedConceptStat[] = [];
 
-  conceptMap.forEach((questionsForConcept, conceptId) => {
+  conceptMap.forEach(({ conceptId, conceptName, questions: questionsForConcept }) => {
     const conceptObj = conceptLookup.get(conceptId);
     const fallbackConcept = questionsForConcept.find((q: any) => q.concept?.id === conceptId)?.concept;
-    const conceptName = conceptObj?.name || fallbackConcept?.name;
-    if (!conceptName) return;
 
     const chapterId = conceptObj?.chapter_id || fallbackConcept?.chapter_id || questionsForConcept[0]?.chapter_id;
     const chapterObj = chapterId ? chapterLookup.get(chapterId) : undefined;
@@ -1835,7 +1880,156 @@ export async function getPlatformStats(studentId = 'default_student') {
   };
 }
 
-// ---------------- Reset/Seed -----------------
+// ---------------- Reset/Seed & Clean Slate Wipe -----------------
+export async function wipeDatabaseCleanSlate(): Promise<void> {
+  // 1. Wipe Supabase tables in strict reverse foreign-key order (preserve admins)
+  if (supabase) {
+    try {
+      const tables = [
+        'student_answers',
+        'student_attempts',
+        'bookmarks',
+        'exam_questions',
+        'explanations',
+        'answer_choices',
+        'questions',
+        'exams',
+        'concepts',
+        'chapters',
+        'subjects',
+        'modules',
+        'academic_years',
+      ];
+      for (const table of tables) {
+        const { error } = await supabase.from(table).delete().not('id', 'is', null);
+        if (error) {
+          console.error(`[Clean Slate] Error clearing table ${table}:`, error);
+        }
+      }
+    } catch (err) {
+      console.error('[Clean Slate] Fatal error clearing Supabase:', err);
+    }
+  }
+
+  // 2. Wipe local store (preserving existing admins)
+  const store = readLocalStore();
+  const existingAdmins = store.admins && store.admins.length > 0 ? store.admins : [];
+  const emptyStore: DatabaseStore = {
+    academic_years: [],
+    modules: [],
+    subjects: [],
+    chapters: [],
+    concepts: [],
+    exams: [],
+    questions: [],
+    answer_choices: [],
+    explanations: [],
+    exam_questions: [],
+    bookmarks: [],
+    student_attempts: [],
+    student_answers: [],
+    admins: existingAdmins,
+  };
+  writeLocalStore(emptyStore);
+}
+
+export async function mergeModules(sourceModuleId: string, targetModuleId: string): Promise<{
+  success: boolean;
+  message: string;
+  moved_questions: number;
+  moved_exams: number;
+  moved_subjects: number;
+}> {
+  const store = readLocalStore();
+  const sourceMod = store.modules.find((m) => m.id === sourceModuleId);
+  const targetMod = store.modules.find((m) => m.id === targetModuleId);
+
+  if (!sourceMod || !targetMod) {
+    // If not found in local store, check Supabase
+    if (supabase) {
+      const { data: mods } = await supabase.from('modules').select('*').in('id', [sourceModuleId, targetModuleId]);
+      if (!mods || mods.length < 2) {
+        throw new Error('One or both modules could not be found.');
+      }
+    } else {
+      throw new Error('One or both modules could not be found.');
+    }
+  }
+
+  const targetYearId = targetMod?.academic_year_id || store.academic_years[0]?.id || 'year-1';
+
+  // 1. Move exams
+  let movedExams = 0;
+  store.exams.forEach((e) => {
+    if (e.module_id === sourceModuleId) {
+      e.module_id = targetModuleId;
+      e.academic_year_id = targetYearId;
+      movedExams++;
+    }
+  });
+
+  // 2. Move subjects
+  let movedSubjects = 0;
+  store.subjects.forEach((s) => {
+    if (s.module_id === sourceModuleId) {
+      s.module_id = targetModuleId;
+      movedSubjects++;
+    }
+  });
+
+  // 3. Move questions
+  let movedQuestions = 0;
+  store.questions.forEach((q) => {
+    if (q.module_id === sourceModuleId) {
+      q.module_id = targetModuleId;
+      q.academic_year_id = targetYearId;
+      movedQuestions++;
+    }
+  });
+
+  // 4. Remove source module from local store
+  store.modules = store.modules.filter((m) => m.id !== sourceModuleId);
+  writeLocalStore(store);
+
+  // 5. Update Supabase if available
+  if (supabase) {
+    try {
+      const { data: movedExData } = await supabase
+        .from('exams')
+        .update({ module_id: targetModuleId, academic_year_id: targetYearId })
+        .eq('module_id', sourceModuleId)
+        .select('id');
+      if (movedExData) movedExams = Math.max(movedExams, movedExData.length);
+
+      const { data: movedSubData } = await supabase
+        .from('subjects')
+        .update({ module_id: targetModuleId })
+        .eq('module_id', sourceModuleId)
+        .select('id');
+      if (movedSubData) movedSubjects = Math.max(movedSubjects, movedSubData.length);
+
+      const { data: movedQData } = await supabase
+        .from('questions')
+        .update({ module_id: targetModuleId, academic_year_id: targetYearId })
+        .eq('module_id', sourceModuleId)
+        .select('id');
+      if (movedQData) movedQuestions = Math.max(movedQuestions, movedQData.length);
+
+      await supabase.from('modules').delete().eq('id', sourceModuleId);
+    } catch (err) {
+      console.error('[mergeModules] Supabase error:', err);
+    }
+  }
+
+  return {
+    success: true,
+    message: `Successfully merged module into "${targetMod?.name || targetModuleId}". Moved ${movedQuestions} questions, ${movedExams} exams, and ${movedSubjects} subjects.`,
+    moved_questions: movedQuestions,
+    moved_exams: movedExams,
+    moved_subjects: movedSubjects,
+  };
+}
+
 export async function resetDatabaseWithSeed(): Promise<void> {
   // 1. Wipe Supabase tables in strict reverse foreign-key order (preserve admins)
   if (supabase) {

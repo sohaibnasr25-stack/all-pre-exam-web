@@ -17,6 +17,8 @@ function importSingleExamIntoStore(
 ): { examId: string; examTitle: string; count: number } {
   // 1. Resolve or Create Academic Year
   const safeYearName = (payload.academic_year_name || '').trim();
+  const isPureYearDigits = /^\d{4}$/.test(safeYearName);
+
   let yearObj = store.academic_years.find(
     (y: AcademicYear) =>
       safeYearName &&
@@ -24,6 +26,12 @@ function importSingleExamIntoStore(
        y.name.toLowerCase().includes(safeYearName.toLowerCase()) ||
        safeYearName.toLowerCase().includes(y.name.toLowerCase()))
   );
+
+  // If safeYearName was just 4 digits (e.g. "2024") and no exact year was found, prefer the default active Academic Year (e.g. "Year 2")
+  if (!yearObj && isPureYearDigits && store.academic_years.length > 0) {
+    yearObj = store.academic_years[0];
+  }
+
   if (!yearObj && safeYearName) {
     const uniqueYearCode = `Y-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     yearObj = {
@@ -48,16 +56,19 @@ function importSingleExamIntoStore(
     if (!store.academic_years.some((y) => y.id === yearObj!.id)) store.academic_years.push(yearObj);
   }
 
-  // 2. Resolve or Create Module
+  // 2. Resolve or Create Module (with fuzzy / normalized name matching)
   const safeModuleName = (payload.module_name || '').trim();
+  const normStr = (s: string) => s.toLowerCase().replace(/[()[\]{}—–\-_.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  const normalizedSafeMod = normStr(safeModuleName);
+
   let moduleObj: Module | undefined = store.modules.find(
     (m: Module) =>
-      m.academic_year_id === yearObj.id &&
       safeModuleName &&
       (m.name.trim().toLowerCase() === safeModuleName.toLowerCase() ||
-       m.name.toLowerCase().includes(safeModuleName.toLowerCase()) ||
-       safeModuleName.toLowerCase().includes(m.name.toLowerCase()))
+       normStr(m.name) === normalizedSafeMod ||
+       (normalizedSafeMod.length > 4 && (normStr(m.name).includes(normalizedSafeMod) || normalizedSafeMod.includes(normStr(m.name)))))
   );
+
   if (!moduleObj && safeModuleName) {
     const uniqueModCode = `MOD-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     moduleObj = {
@@ -222,32 +233,34 @@ function importSingleExamIntoStore(
       };
       store.answer_choices.push(choiceObj);
 
-      let explText = c.explanation;
+      let explText = (c.explanation || '').replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '').trim();
       if (!explText && c.is_correct && questionLevelExpl) {
         // Only inherit questionLevelExpl if it doesn't explicitly belong to a different choice letter
         const targetLetterMatch = questionLevelExpl.match(/Explanation\s*\(([A-Ea-e])\)/i);
         if (!targetLetterMatch || targetLetterMatch[1].toUpperCase() === c.letter.toUpperCase()) {
-          explText = questionLevelExpl;
+          explText = questionLevelExpl.replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '').trim();
         }
       }
 
-      if (explText || c.is_correct) {
-        const isWhyCorrect = Boolean(c.is_correct);
-        const explanationObj: ExplanationItem = {
-          id: `exp-${choiceId}`,
-          question_id: newQId,
-          choice_id: choiceId,
-          choice_letter: c.letter,
-          explanation_text: explText || (c.is_correct ? 'Correct medical answer.' : 'Incorrect option.'),
-          is_why_correct: isWhyCorrect,
-          is_why_incorrect: !isWhyCorrect,
-          source_document: c.source_document || 'Core Medical Literature',
-          source_page: c.source_page || 'p. Reference',
-          source_reference: c.source_reference || 'Core Curriculum',
-          created_at: new Date().toISOString(),
-        };
-        store.explanations.push(explanationObj);
-      }
+      const isWhyCorrect = Boolean(c.is_correct);
+      const defaultRationale = isWhyCorrect
+        ? 'Correct medical answer based on underlying clinical mechanisms and physiological principles.'
+        : 'This option is medically incorrect under standard clinical and physiological guidelines.';
+
+      const explanationObj: ExplanationItem = {
+        id: `exp-${choiceId}`,
+        question_id: newQId,
+        choice_id: choiceId,
+        choice_letter: c.letter,
+        explanation_text: explText || defaultRationale,
+        is_why_correct: isWhyCorrect,
+        is_why_incorrect: !isWhyCorrect,
+        source_document: c.source_document || 'Core Medical Literature',
+        source_page: c.source_page || 'p. Reference',
+        source_reference: c.source_reference || 'Core Curriculum',
+        created_at: new Date().toISOString(),
+      };
+      store.explanations.push(explanationObj);
     });
   });
 
