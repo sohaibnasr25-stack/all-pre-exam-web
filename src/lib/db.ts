@@ -781,21 +781,131 @@ export async function updateExam(
   return updatedExam || (await getExam(id));
 }
 
-export async function deleteExam(id: string): Promise<boolean> {
+export async function deleteExam(id: string, deleteAssociatedQuestions: boolean = true): Promise<boolean> {
   const store = readLocalStore();
-  store.exams = store.exams.filter((e) => e.id !== id);
-  store.exam_questions = store.exam_questions.filter((eq) => eq.exam_id !== id);
-  writeLocalStore(store);
+
+  // 1. Find all questions linked to this exam
+  const localLinkedQIds = store.exam_questions
+    .filter((eq) => eq.exam_id === id)
+    .map((eq) => eq.question_id);
+
+  let allLinkedQIds = [...localLinkedQIds];
 
   if (supabase) {
     try {
+      const { data: supaEq } = await supabase.from('exam_questions').select('question_id').eq('exam_id', id);
+      if (supaEq) {
+        supaEq.forEach((r) => {
+          if (!allLinkedQIds.includes(r.question_id)) allLinkedQIds.push(r.question_id);
+        });
+      }
+    } catch (err) {
+      console.warn('Error fetching exam_questions in deleteExam:', err);
+    }
+  }
+
+  // 2. Identify questions that belong ONLY to this exam (not shared with any other exam)
+  let questionsToDelete: string[] = [];
+  if (deleteAssociatedQuestions && allLinkedQIds.length > 0) {
+    const localOtherQIds = new Set(
+      store.exam_questions.filter((eq) => eq.exam_id !== id).map((eq) => eq.question_id)
+    );
+
+    let supaOtherQIds = new Set<string>();
+    if (supabase) {
+      try {
+        const { data: otherEq } = await supabase
+          .from('exam_questions')
+          .select('question_id')
+          .neq('exam_id', id)
+          .in('question_id', allLinkedQIds);
+        if (otherEq) {
+          otherEq.forEach((r) => supaOtherQIds.add(r.question_id));
+        }
+      } catch (err) {
+        console.warn('Error querying other exams for questions:', err);
+      }
+    }
+
+    questionsToDelete = allLinkedQIds.filter(
+      (qid) => !localOtherQIds.has(qid) && !supaOtherQIds.has(qid)
+    );
+  }
+
+  // 3. Remove from local store
+  store.exams = store.exams.filter((e) => e.id !== id);
+  store.exam_questions = store.exam_questions.filter((eq) => eq.exam_id !== id);
+
+  if (questionsToDelete.length > 0) {
+    const qSet = new Set(questionsToDelete);
+    store.questions = store.questions.filter((q) => !qSet.has(q.id));
+    store.answer_choices = store.answer_choices.filter((c) => !qSet.has(c.question_id));
+    store.explanations = store.explanations.filter((e) => !qSet.has(e.question_id));
+    store.bookmarks = store.bookmarks.filter((b) => !qSet.has(b.question_id));
+    store.exam_questions = store.exam_questions.filter((eq) => !qSet.has(eq.question_id));
+  }
+
+  writeLocalStore(store);
+
+  // 4. Remove from Supabase
+  if (supabase) {
+    try {
+      if (questionsToDelete.length > 0) {
+        await supabase.from('answer_choices').delete().in('question_id', questionsToDelete);
+        await supabase.from('explanations').delete().in('question_id', questionsToDelete);
+        await supabase.from('bookmarks').delete().in('question_id', questionsToDelete);
+        await supabase.from('exam_questions').delete().in('question_id', questionsToDelete);
+        await supabase.from('questions').delete().in('id', questionsToDelete);
+      }
+      await supabase.from('exam_questions').delete().eq('exam_id', id);
       await supabase.from('exams').delete().eq('id', id);
     } catch (e) {
-      console.warn('Error deleting exam from Supabase:', e);
+      console.warn('Error deleting exam and associated questions from Supabase:', e);
     }
   }
 
   return true;
+}
+
+/**
+ * Utility to clean up any orphan questions not attached to ANY exam
+ */
+export async function cleanOrphanQuestions(): Promise<{ deleted_count: number }> {
+  const store = readLocalStore();
+  const linkedQIdsLocal = new Set(store.exam_questions.map((eq) => eq.question_id));
+  let orphanIds = store.questions.filter((q) => !linkedQIdsLocal.has(q.id)).map((q) => q.id);
+
+  if (supabase) {
+    try {
+      const { data: qs } = await supabase.from('questions').select('id');
+      const { data: eq } = await supabase.from('exam_questions').select('question_id');
+      const eqSet = new Set((eq || []).map((x) => x.question_id));
+      const supaOrphans = (qs || []).filter((q) => !eqSet.has(q.id)).map((q) => q.id);
+      orphanIds = Array.from(new Set([...orphanIds, ...supaOrphans]));
+
+      if (orphanIds.length > 0) {
+        await supabase.from('answer_choices').delete().in('question_id', orphanIds);
+        await supabase.from('explanations').delete().in('question_id', orphanIds);
+        await supabase.from('bookmarks').delete().in('question_id', orphanIds);
+        await supabase.from('exam_questions').delete().in('question_id', orphanIds);
+        await supabase.from('questions').delete().in('id', orphanIds);
+      }
+    } catch (err) {
+      console.error('Error cleaning orphan questions in Supabase:', err);
+    }
+  }
+
+  if (orphanIds.length > 0) {
+    const oSet = new Set(orphanIds);
+    store.questions = store.questions.filter((q) => !oSet.has(q.id));
+    store.answer_choices = store.answer_choices.filter((c) => !oSet.has(c.question_id));
+    store.explanations = store.explanations.filter((e) => !oSet.has(e.question_id));
+    store.bookmarks = store.bookmarks.filter((b) => !oSet.has(b.question_id));
+    store.exam_questions = store.exam_questions.filter((eq) => !oSet.has(eq.question_id));
+    writeLocalStore(store);
+  }
+
+  return { deleted_count: orphanIds.length };
 }
 
 // ---------------- Questions -----------------

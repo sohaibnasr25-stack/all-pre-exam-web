@@ -84,11 +84,12 @@ export default function RepeatedConceptsPage() {
     return true;
   });
 
-  const seenSubNames = new Set<string>();
+  const seenSubKeys = new Set<string>();
   const visibleSubjects = rawVisibleSubjects.filter((s) => {
-    const key = (s.name || '').trim().toLowerCase();
-    if (seenSubNames.has(key)) return false;
-    seenSubNames.add(key);
+    // Strictly isolate deduplication per module: never pool subjects from different modules!
+    const key = `${s.module_id}:::${(s.name || '').trim().toLowerCase()}`;
+    if (seenSubKeys.has(key)) return false;
+    seenSubKeys.add(key);
     return true;
   });
 
@@ -114,7 +115,7 @@ export default function RepeatedConceptsPage() {
       const selectedSub = subjects.find((s) => s.id === selectedSubjectId);
       if (item.subject_id) {
         const itemSub = subjects.find((s) => s.id === item.subject_id);
-        const matchesName = selectedSub && itemSub && itemSub.name.trim().toLowerCase() === selectedSub.name.trim().toLowerCase();
+        const matchesName = selectedSub && itemSub && itemSub.module_id === selectedSub.module_id && itemSub.name.trim().toLowerCase() === selectedSub.name.trim().toLowerCase();
         if (item.subject_id !== selectedSubjectId && !matchesName) return false;
       }
     }

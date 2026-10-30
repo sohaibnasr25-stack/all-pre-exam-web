@@ -95,11 +95,12 @@ export default function StudyHierarchyPage() {
     return true;
   });
 
-  const seenSubNames = new Set<string>();
+  const seenSubKeys = new Set<string>();
   const visibleSubjects = rawVisibleSubjects.filter((s) => {
-    const key = (s.name || '').trim().toLowerCase();
-    if (seenSubNames.has(key)) return false;
-    seenSubNames.add(key);
+    // Strictly isolate deduplication per module: never pool subjects from different modules!
+    const key = `${s.module_id}:::${(s.name || '').trim().toLowerCase()}`;
+    if (seenSubKeys.has(key)) return false;
+    seenSubKeys.add(key);
     return true;
   });
 
@@ -118,13 +119,13 @@ export default function StudyHierarchyPage() {
     }
   }, [visibleSubjects, selectedSubjectId]);
 
-  // Current active subject and related matching subjects (to handle any edge case variations)
+  // Current active subject and related matching subjects (STRICTLY WITHIN THE SAME MODULE)
   const activeSubject = subjects.find((s) => s.id === selectedSubjectId);
   const relatedSubjectIds = subjects
-    .filter((s) => s.id === selectedSubjectId || (activeSubject && s.name.trim().toLowerCase() === activeSubject.name.trim().toLowerCase()))
+    .filter((s) => s.id === selectedSubjectId || (activeSubject && s.module_id === activeSubject.module_id && s.name.trim().toLowerCase() === activeSubject.name.trim().toLowerCase()))
     .map((s) => s.id);
 
-  // Filtered chapters for current subject (with defensive deduplication by name)
+  // Filtered chapters for current subject (strictly within the current subject's module, deduplicating duplicate chapter names)
   const rawCurrentChapters = chapters.filter((c) => relatedSubjectIds.includes(c.subject_id));
   const seenChapNames = new Set<string>();
   const currentChapters = rawCurrentChapters.filter((c) => {
@@ -155,7 +156,9 @@ export default function StudyHierarchyPage() {
       if (q.chapter_id === selectedChapterId) return true;
       if (targetChap) {
         const qChap = chapters.find((c) => c.id === q.chapter_id);
-        if (qChap && qChap.name.trim().toLowerCase() === targetChap.name.trim().toLowerCase()) return true;
+        if (qChap && qChap.subject_id && relatedSubjectIds.includes(qChap.subject_id) && qChap.name.trim().toLowerCase() === targetChap.name.trim().toLowerCase()) {
+          return true;
+        }
       }
       return false;
     }
@@ -274,7 +277,7 @@ export default function StudyHierarchyPage() {
           {visibleSubjects.map((sub) => {
             const isSelected = sub.id === selectedSubjectId;
             const subEquivalentIds = subjects
-              .filter((s) => s.id === sub.id || s.name.trim().toLowerCase() === sub.name.trim().toLowerCase())
+              .filter((s) => s.id === sub.id || (s.module_id === sub.module_id && s.name.trim().toLowerCase() === sub.name.trim().toLowerCase()))
               .map((s) => s.id);
             const qCount = questions.filter((q) => subEquivalentIds.includes(q.subject_id)).length;
             return (

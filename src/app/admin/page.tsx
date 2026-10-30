@@ -1300,14 +1300,14 @@ D) Normal myocardium with subtle wavy fibers only
 
                   <button
                     onClick={async () => {
-                      if (!confirm(`Delete exam "${exam.title}"?`)) return;
+                      if (!confirm(`هل أنت متأكد من حذف امتحان "${exam.title}"؟\n\nتنبيه: سيتم حذف الامتحان وكافة الأسئلة المرتبطة به نهائياً من قاعدة البيانات.`)) return;
                       // Optimistic delete: remove instantly from UI
                       setExams((prev) => prev.filter((e) => e.id !== exam.id));
                       try {
-                        const res = await adminFetch(`/api/exams?id=${exam.id}`, { method: 'DELETE' });
+                        const res = await adminFetch(`/api/exams?id=${exam.id}&delete_questions=true`, { method: 'DELETE' });
                         const data = await res.json();
                         if (data.success) {
-                          showFeedback('success', `Exam "${exam.title}" deleted successfully`);
+                          showFeedback('success', `تم حذف الامتحان "${exam.title}" وأسئلته بنجاح`);
                         } else {
                           showFeedback('error', data.message || 'Failed to delete exam');
                         }
@@ -1317,7 +1317,7 @@ D) Normal myocardium with subtle wavy fibers only
                       await refreshAllData();
                     }}
                     className="btn btn-danger btn-sm"
-                    title="حذف الامتحان"
+                    title="حذف الامتحان وأسئلته"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -2069,6 +2069,29 @@ D) Normal myocardium with subtle wavy fibers only
               >
                 <RotateCcw size={15} />
                 <span>مسح وتفريغ قاعدة البيانات بالكامل (Clean Slate Wipe)</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  if (!confirm('هل تريد فحص وتنظيف أي أسئلة غير مرتبطة بأي امتحان تم حذفه سابقاً؟')) return;
+                  try {
+                    const res = await adminFetch('/api/admin/clean-orphans', { method: 'POST' });
+                    const d = await res.json();
+                    if (d.success) {
+                      showFeedback('success', d.message || 'تم تنظيف الأسئلة اليتيمة بنجاح');
+                      await refreshAllData();
+                    } else {
+                      showFeedback('error', d.message || 'فشلت عملية التنظيف');
+                    }
+                  } catch (err) {
+                    showFeedback('error', String(err));
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{ gap: '0.4rem', borderColor: 'rgba(234, 179, 8, 0.4)', color: '#fbbf24' }}
+              >
+                <Sparkles size={15} />
+                <span>تنظيف وحذف الأسئلة غير المرتبطة بامتحانات (Purge Orphan Questions)</span>
               </button>
 
               <button

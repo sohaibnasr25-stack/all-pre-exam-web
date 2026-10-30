@@ -70,11 +70,12 @@ export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    const deleteQuestions = searchParams.get('delete_questions') !== 'false';
     if (!id) {
       return NextResponse.json({ success: false, message: 'ID is required' }, { status: 400 });
     }
-    await deleteExam(id);
-    return NextResponse.json({ success: true, message: 'Exam deleted' });
+    await deleteExam(id, deleteQuestions);
+    return NextResponse.json({ success: true, message: 'Exam and its questions deleted successfully' });
   } catch (error) {
     return NextResponse.json({ success: false, message: (error as Error).message || String(error), error: String(error) }, { status: 500 });
   }

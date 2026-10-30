@@ -5918,188 +5918,6 @@
       "created_at": "2026-10-29T20:43:31.368+00:00"
     },
     {
-      "id": "q-1793306641364",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611364",
-      "concept_id": "concept-1793306641364",
-      "question_text": "Which drug should be avoided while using daptomycin?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 1,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641365",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611370",
-      "concept_id": "concept-1793306641365",
-      "question_text": "Which drug is used for the treatment of systemic mycosis?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 2,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641366",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306626369",
-      "concept_id": "concept-1793306641366",
-      "question_text": "Which sulphonamide is used in combination for the treatment of uncomplicated UTI?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 3,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641367",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611369",
-      "concept_id": "concept-1793306641367",
-      "question_text": "Acyclovir can be used for the treatment of?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 4,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641368",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611370",
-      "concept_id": "concept-1793306611372",
-      "question_text": "What is the mechanism of action of imidazoles?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 5,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641369",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611371",
-      "concept_id": "concept-1793306641369",
-      "question_text": "Which drug is used for the treatment of Pseudomonas and can cause ototoxicity & nephrotoxicity?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 6,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641370",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306626369",
-      "concept_id": "concept-1793306641370",
-      "question_text": "Which drug is used for the treatment of prostatitis when the organism has resistance to beta-lactams?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 7,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641371",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306626369",
-      "concept_id": "concept-1793306641371",
-      "question_text": "What is a notable adverse effect of sulphonamides in neonates?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 8,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641372",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611371",
-      "concept_id": "concept-1793306641372",
-      "question_text": "What is the treatment of choice for Chlamydia cervicitis in a non-pregnant female?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 9,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641373",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611364",
-      "concept_id": "concept-1793306641373",
-      "question_text": "Which of the following is an \"oral\" drug resistant to beta-lactamase?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 10,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641374",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611364",
-      "concept_id": "concept-1793306641374",
-      "question_text": "What is the appropriate treatment for Pseudomonas in a patient with hypersensitivity to penicillins and chronic kidney disease?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 11,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641375",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306611371",
-      "concept_id": "concept-1793306641375",
-      "question_text": "After the use of clindamycin, a patient complains of abdominal pain & diarrhea. What is the likely complication?",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 12,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
-      "id": "q-1793306641376",
-      "academic_year_id": "year-1793306611364",
-      "module_id": "mod-1793306611364",
-      "subject_id": "sub-1793306611364",
-      "chapter_id": "chap-1793306626369",
-      "concept_id": "concept-1793306641376",
-      "question_text": "Fluoroquinolones are bactericidal through the:",
-      "clinical_vignette": null,
-      "image_url": null,
-      "difficulty": "medium",
-      "order_index": 13,
-      "created_at": "2026-10-29T20:43:31.368+00:00"
-    },
-    {
       "id": "q-1793306611366",
       "academic_year_id": "year-1793306611364",
       "module_id": "mod-1793306611364",
@@ -7164,38 +6982,6 @@
       "order_index": 4
     },
     {
-      "id": "c-q-1793306641364-1",
-      "question_id": "q-1793306641364",
-      "choice_letter": "B",
-      "choice_text": "Vancomycin",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641364-3",
-      "question_id": "q-1793306641364",
-      "choice_letter": "D",
-      "choice_text": "Rifampin",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641371-2",
-      "question_id": "q-1793306641371",
-      "choice_letter": "C",
-      "choice_text": "Cartilage damage",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641371-3",
-      "question_id": "q-1793306641371",
-      "choice_letter": "D",
-      "choice_text": "Tooth discoloration",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
       "id": "c-q-1793306631376-0",
       "question_id": "q-1793306631376",
       "choice_letter": "A",
@@ -7258,38 +7044,6 @@
       "choice_text": "The parasite dies in the human skin",
       "is_correct": false,
       "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641364-0",
-      "question_id": "q-1793306641364",
-      "choice_letter": "A",
-      "choice_text": "Linezolid",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641364-2",
-      "question_id": "q-1793306641364",
-      "choice_letter": "C",
-      "choice_text": "Simvastatin",
-      "is_correct": true,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641371-0",
-      "question_id": "q-1793306641371",
-      "choice_letter": "A",
-      "choice_text": "Gray baby syndrome",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641371-1",
-      "question_id": "q-1793306641371",
-      "choice_letter": "B",
-      "choice_text": "Kernicterus",
-      "is_correct": true,
-      "order_index": 2
     },
     {
       "id": "c-q-1793306616376-0",
@@ -7620,70 +7374,6 @@
       "order_index": 4
     },
     {
-      "id": "c-q-1793306641365-0",
-      "question_id": "q-1793306641365",
-      "choice_letter": "A",
-      "choice_text": "Itraconazole",
-      "is_correct": true,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641365-1",
-      "question_id": "q-1793306641365",
-      "choice_letter": "B",
-      "choice_text": "Terbinafine",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641365-2",
-      "question_id": "q-1793306641365",
-      "choice_letter": "C",
-      "choice_text": "Oxiconazole",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641365-3",
-      "question_id": "q-1793306641365",
-      "choice_letter": "D",
-      "choice_text": "Nystatin",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641372-1",
-      "question_id": "q-1793306641372",
-      "choice_letter": "B",
-      "choice_text": "Metronidazole",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641372-3",
-      "question_id": "q-1793306641372",
-      "choice_letter": "D",
-      "choice_text": "Penicillin G",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641373-1",
-      "question_id": "q-1793306641373",
-      "choice_letter": "B",
-      "choice_text": "Piperacillin-Tazobactam",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641373-2",
-      "question_id": "q-1793306641373",
-      "choice_letter": "C",
-      "choice_text": "Vancomycin",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
       "id": "c-q-1793306631377-0",
       "question_id": "q-1793306631377",
       "choice_letter": "A",
@@ -7746,38 +7436,6 @@
       "choice_text": "Multiple myeloma",
       "is_correct": true,
       "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641372-0",
-      "question_id": "q-1793306641372",
-      "choice_letter": "A",
-      "choice_text": "Ceftriaxone",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641372-2",
-      "question_id": "q-1793306641372",
-      "choice_letter": "C",
-      "choice_text": "Doxycycline",
-      "is_correct": true,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641373-0",
-      "question_id": "q-1793306641373",
-      "choice_letter": "A",
-      "choice_text": "Amoxicillin",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641373-3",
-      "question_id": "q-1793306641373",
-      "choice_letter": "D",
-      "choice_text": "Amoxicillin-clavulanic acid",
-      "is_correct": true,
-      "order_index": 4
     },
     {
       "id": "c-q-1793306636378-0",
@@ -8020,38 +7678,6 @@
       "order_index": 4
     },
     {
-      "id": "c-q-1793306641366-1",
-      "question_id": "q-1793306641366",
-      "choice_letter": "B",
-      "choice_text": "Clindamycin",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641366-2",
-      "question_id": "q-1793306641366",
-      "choice_letter": "C",
-      "choice_text": "Metronidazole",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641374-1",
-      "question_id": "q-1793306641374",
-      "choice_letter": "B",
-      "choice_text": "Vancomycin",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641374-2",
-      "question_id": "q-1793306641374",
-      "choice_letter": "C",
-      "choice_text": "Piperacillin",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
       "id": "c-q-1793306631378-0",
       "question_id": "q-1793306631378",
       "choice_letter": "A",
@@ -8098,38 +7724,6 @@
       "choice_text": "Abciximab",
       "is_correct": true,
       "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641366-0",
-      "question_id": "q-1793306641366",
-      "choice_letter": "A",
-      "choice_text": "Azithromycin",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641366-3",
-      "question_id": "q-1793306641366",
-      "choice_letter": "D",
-      "choice_text": "Sulphamethoxazole",
-      "is_correct": true,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641374-0",
-      "question_id": "q-1793306641374",
-      "choice_letter": "A",
-      "choice_text": "Ceftazidime",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641374-3",
-      "question_id": "q-1793306641374",
-      "choice_letter": "D",
-      "choice_text": "Aztreonam",
-      "is_correct": true,
-      "order_index": 4
     },
     {
       "id": "c-q-1793306636379-0",
@@ -8492,38 +8086,6 @@
       "order_index": 4
     },
     {
-      "id": "c-q-1793306641367-2",
-      "question_id": "q-1793306641367",
-      "choice_letter": "C",
-      "choice_text": "Influenza A",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641367-3",
-      "question_id": "q-1793306641367",
-      "choice_letter": "D",
-      "choice_text": "Hepatitis C",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641375-2",
-      "question_id": "q-1793306641375",
-      "choice_letter": "C",
-      "choice_text": "Peptic ulcer disease",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641375-3",
-      "question_id": "q-1793306641375",
-      "choice_letter": "D",
-      "choice_text": "Paralytic ileus",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
       "id": "c-q-1793306631379-0",
       "question_id": "q-1793306631379",
       "choice_letter": "A",
@@ -8538,38 +8100,6 @@
       "choice_text": "It's antigenic",
       "is_correct": true,
       "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641367-0",
-      "question_id": "q-1793306641367",
-      "choice_letter": "A",
-      "choice_text": "Cytomegalovirus (CMV)",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641367-1",
-      "question_id": "q-1793306641367",
-      "choice_letter": "B",
-      "choice_text": "Herpes zoster",
-      "is_correct": true,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641375-0",
-      "question_id": "q-1793306641375",
-      "choice_letter": "A",
-      "choice_text": "Ischemic colitis",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641375-1",
-      "question_id": "q-1793306641375",
-      "choice_letter": "B",
-      "choice_text": "Pseudomembranous colitis",
-      "is_correct": true,
-      "order_index": 2
     },
     {
       "id": "c-q-1793306626379-1",
@@ -8904,70 +8434,6 @@
       "question_id": "q-1793306636381",
       "choice_letter": "D",
       "choice_text": "Vancomycin",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641368-0",
-      "question_id": "q-1793306641368",
-      "choice_letter": "A",
-      "choice_text": "Interfere with ergosterol synthesis",
-      "is_correct": true,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641368-1",
-      "question_id": "q-1793306641368",
-      "choice_letter": "B",
-      "choice_text": "Bind to ergosterol and form pores in the cell membrane",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641368-2",
-      "question_id": "q-1793306641368",
-      "choice_letter": "C",
-      "choice_text": "Inhibit the synthesis of beta-(1,3)-D-glucan",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641368-3",
-      "question_id": "q-1793306641368",
-      "choice_letter": "D",
-      "choice_text": "Inhibit fungal squalene epoxidase",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641376-0",
-      "question_id": "q-1793306641376",
-      "choice_letter": "A",
-      "choice_text": "Inhibition of DNA gyrase",
-      "is_correct": true,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641376-1",
-      "question_id": "q-1793306641376",
-      "choice_letter": "B",
-      "choice_text": "Inhibition of RNA polymerase",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641376-2",
-      "question_id": "q-1793306641376",
-      "choice_letter": "C",
-      "choice_text": "Inhibition of dihydropteroate synthase",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641376-3",
-      "question_id": "q-1793306641376",
-      "choice_letter": "D",
-      "choice_text": "Inhibition of the 50S ribosomal subunit",
       "is_correct": false,
       "order_index": 4
     },
@@ -9356,22 +8822,6 @@
       "order_index": 4
     },
     {
-      "id": "c-q-1793306641369-1",
-      "question_id": "q-1793306641369",
-      "choice_letter": "B",
-      "choice_text": "Piperacillin",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641369-3",
-      "question_id": "q-1793306641369",
-      "choice_letter": "D",
-      "choice_text": "Ciprofloxacin",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
       "id": "c-q-1793306631381-0",
       "question_id": "q-1793306631381",
       "choice_letter": "A",
@@ -9416,22 +8866,6 @@
       "question_id": "q-1793306636368",
       "choice_letter": "C",
       "choice_text": "Tenecteplase (Tecnelase)",
-      "is_correct": true,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641369-0",
-      "question_id": "q-1793306641369",
-      "choice_letter": "A",
-      "choice_text": "Vancomycin",
-      "is_correct": false,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641369-2",
-      "question_id": "q-1793306641369",
-      "choice_letter": "C",
-      "choice_text": "Gentamicin",
       "is_correct": true,
       "order_index": 3
     },
@@ -9840,38 +9274,6 @@
       "question_id": "q-1793306636383",
       "choice_letter": "D",
       "choice_text": "Cefepime",
-      "is_correct": false,
-      "order_index": 4
-    },
-    {
-      "id": "c-q-1793306641370-0",
-      "question_id": "q-1793306641370",
-      "choice_letter": "A",
-      "choice_text": "Ciprofloxacin",
-      "is_correct": true,
-      "order_index": 1
-    },
-    {
-      "id": "c-q-1793306641370-1",
-      "question_id": "q-1793306641370",
-      "choice_letter": "B",
-      "choice_text": "Silver sulphadiazine",
-      "is_correct": false,
-      "order_index": 2
-    },
-    {
-      "id": "c-q-1793306641370-2",
-      "question_id": "q-1793306641370",
-      "choice_letter": "C",
-      "choice_text": "Ampicillin",
-      "is_correct": false,
-      "order_index": 3
-    },
-    {
-      "id": "c-q-1793306641370-3",
-      "question_id": "q-1793306641370",
-      "choice_letter": "D",
-      "choice_text": "Cefuroxime",
       "is_correct": false,
       "order_index": 4
     },
@@ -15187,19 +14589,6 @@
       "created_at": "2026-10-29T21:35:15.269+00:00"
     },
     {
-      "id": "exp-q-1793306641364",
-      "question_id": "q-1793306641364",
-      "choice_id": "c-q-1793306641364-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Linezolid is an oxazolidinone that causes bone marrow suppression, but does not potentiate daptomycin-induced skeletal myopathy.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 43 (PDF p. 46)",
-      "source_page": "43",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:20.569+00:00"
-    },
-    {
       "id": "exp-c-q-1793318225056-1",
       "question_id": "q-1793318225056",
       "choice_id": "c-q-1793318225056-1",
@@ -15356,19 +14745,6 @@
       "created_at": "2026-10-29T23:57:05.064+00:00"
     },
     {
-      "id": "exp-q-1793306641371",
-      "question_id": "q-1793306641371",
-      "choice_id": "c-q-1793306641371-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Gray baby syndrome is caused by chloramphenicol toxicity in neonates.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 45 (PDF p. 48)",
-      "source_page": "45",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:26.376+00:00"
-    },
-    {
       "id": "exp-q-1793306631368-A",
       "question_id": "q-1793306631368",
       "choice_id": null,
@@ -15512,19 +14888,6 @@
       "created_at": "2026-10-29T21:35:07.459+00:00"
     },
     {
-      "id": "exp-q-1793306641367",
-      "question_id": "q-1793306641367",
-      "choice_id": "c-q-1793306641367-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Acyclovir is ineffective against Cytomegalovirus (CMV) because CMV lacks the viral thymidine kinase enzyme necessary to phosphorylate and activate acyclovir; ganciclovir is used for CMV.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed pp. 54, 55 (PDF pp. 57, 58)",
-      "source_page": "p. Reference",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:22.875+00:00"
-    },
-    {
       "id": "exp-q-1793306636380",
       "question_id": "q-1793306636380",
       "choice_id": "c-q-1793306636380-0",
@@ -15536,19 +14899,6 @@
       "source_page": "35",
       "source_reference": "Core Curriculum",
       "created_at": "2026-10-29T21:35:17.492+00:00"
-    },
-    {
-      "id": "exp-q-1793306641375",
-      "question_id": "q-1793306641375",
-      "choice_id": "c-q-1793306641375-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Ischemic colitis is caused by acute vascular compromise of mesenteric blood flow, not antibiotic dysbiosis.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 44 (PDF p. 47)",
-      "source_page": "44",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:30.653+00:00"
     },
     {
       "id": "exp-q-1793306611373-d",
@@ -16019,32 +15369,6 @@
       "created_at": "2026-10-29T23:03:33.668331+00:00"
     },
     {
-      "id": "exp-q-1793306641372-c",
-      "question_id": "q-1793306641372",
-      "choice_id": "c-q-1793306641372-2",
-      "choice_letter": "C",
-      "explanation_text": "Explanation (C) — Correct: Doxycycline (100 mg orally BID for 7 days) is the CDC first-line recommended therapy for uncomplicated Chlamydia trachomatis cervicitis in non-pregnant adults.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:37.383744+00:00"
-    },
-    {
-      "id": "exp-q-1793306641374-d",
-      "question_id": "q-1793306641374",
-      "choice_id": "c-q-1793306641374-3",
-      "choice_letter": "D",
-      "explanation_text": "Explanation (D) — Correct: Aztreonam is a monobactam covering Pseudomonas that possesses no cross-hypersensitivity with penicillins and does not cause aminoglycoside-like nephrotoxicity.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:38.424405+00:00"
-    },
-    {
       "id": "exp-q-1793306636378-b",
       "question_id": "q-1793306636378",
       "choice_id": "c-q-1793306636378-1",
@@ -16108,45 +15432,6 @@
       "source_page": "p. Reference",
       "source_reference": "Core Curriculum",
       "created_at": "2026-10-29T21:35:15.916+00:00"
-    },
-    {
-      "id": "exp-q-1793306641365",
-      "question_id": "q-1793306641365",
-      "choice_id": "c-q-1793306641365-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Correct: Itraconazole is an orally bioavailable broad-spectrum systemic triazole antifungal used for systemic and endemic mycoses (histoplasmosis, blastomycosis, sporotrichosis, and aspergillosis).",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 53 (PDF p. 56)",
-      "source_page": "53",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:21.487+00:00"
-    },
-    {
-      "id": "exp-q-1793306641372",
-      "question_id": "q-1793306641372",
-      "choice_id": "c-q-1793306641372-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Ceftriaxone is the drug of choice for Neisseria gonorrhoeae (gonorrhea), but beta-lactams are ineffective against obligate intracellular Chlamydia trachomatis.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 34 (PDF p. 37)",
-      "source_page": "34",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:27.425+00:00"
-    },
-    {
-      "id": "exp-q-1793306641373",
-      "question_id": "q-1793306641373",
-      "choice_id": "c-q-1793306641373-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Amoxicillin alone is completely susceptible to and destroyed by bacterial beta-lactamases.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 32 (PDF p. 35)",
-      "source_page": "32",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:29.114+00:00"
     },
     {
       "id": "exp-q-1793306611365-d",
@@ -16331,45 +15616,6 @@
       "created_at": "2026-10-29T23:03:33.198141+00:00"
     },
     {
-      "id": "exp-q-1793306641367-b",
-      "question_id": "q-1793306641367",
-      "choice_id": "c-q-1793306641367-1",
-      "choice_letter": "B",
-      "explanation_text": "Explanation (B) — Correct: Acyclovir is selectively activated by varicella zoster virus (VZV) thymidine kinase and is indicated for the treatment of Herpes zoster (shingles).",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:36.004288+00:00"
-    },
-    {
-      "id": "exp-q-1793306641371-b",
-      "question_id": "q-1793306641371",
-      "choice_id": "c-q-1793306641371-1",
-      "choice_letter": "B",
-      "explanation_text": "Explanation (B) — Correct: Sulfonamides displace unconjugated bilirubin from albumin binding sites in neonates, allowing free bilirubin to cross the blood-brain barrier and cause kernicterus.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:36.918611+00:00"
-    },
-    {
-      "id": "exp-q-1793306641375-b",
-      "question_id": "q-1793306641375",
-      "choice_id": "c-q-1793306641375-1",
-      "choice_letter": "B",
-      "explanation_text": "Explanation (B) — Correct: Clindamycin disrupts colonic anaerobic flora, facilitating overgrowth of Clostridioides difficile and toxin-mediated pseudomembranous colitis.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:38.942323+00:00"
-    },
-    {
       "id": "exp-q-1793306631378",
       "question_id": "q-1793306631378",
       "choice_id": "c-q-1793306631378-0",
@@ -16420,32 +15666,6 @@
       "source_page": "p. Reference",
       "source_reference": "Core Curriculum",
       "created_at": "2026-10-29T21:35:16.604+00:00"
-    },
-    {
-      "id": "exp-q-1793306641366",
-      "question_id": "q-1793306641366",
-      "choice_id": "c-q-1793306641366-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Azithromycin is a macrolide antibiotic, not a sulfonamide.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 42 (PDF p. 45)",
-      "source_page": "42",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:22.312+00:00"
-    },
-    {
-      "id": "exp-q-1793306641374",
-      "question_id": "q-1793306641374",
-      "choice_id": "c-q-1793306641374-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Ceftazidime is a third-generation cephalosporin that carries a risk of cross-allergenicity in patients with severe penicillin hypersensitivity.",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 34 (PDF p. 37)",
-      "source_page": "34",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:29.737+00:00"
     },
     {
       "id": "exp-q-1793306611366-d",
@@ -16576,32 +15796,6 @@
       "source_page": null,
       "source_reference": "Medical Curriculum Core Reference",
       "created_at": "2026-10-29T23:03:34.147922+00:00"
-    },
-    {
-      "id": "exp-q-1793306641369-c",
-      "question_id": "q-1793306641369",
-      "choice_id": "c-q-1793306641369-2",
-      "choice_letter": "C",
-      "explanation_text": "Explanation (C) — Correct: Gentamicin is an aminoglycoside active against Pseudomonas aeruginosa that carries boxed warnings for potential vestibular/cochlear ototoxicity and acute tubular nephrotoxicity.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:36.459121+00:00"
-    },
-    {
-      "id": "exp-q-1793306641373-d",
-      "question_id": "q-1793306641373",
-      "choice_id": "c-q-1793306641373-3",
-      "choice_letter": "D",
-      "explanation_text": "Explanation (D) — Correct: Amoxicillin-clavulanic acid (Augmentin) is an orally available formulation where clavulanate confers resistance to beta-lactamase producing organisms.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:37.850915+00:00"
     },
     {
       "id": "exp-q-1793306636379-c",
@@ -17046,19 +16240,6 @@
       "created_at": "2026-10-29T21:35:18.236+00:00"
     },
     {
-      "id": "exp-q-1793306641368",
-      "question_id": "q-1793306641368",
-      "choice_id": "c-q-1793306641368-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Correct: Imidazoles (and triazoles) interfere with ergosterol biosynthesis by inhibiting fungal cytochrome P450-dependent 14-alpha-demethylase, which converts lanosterol to ergosterol, thereby destabilizing fungal cell membrane integrity.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 52 (PDF p. 55)",
-      "source_page": "52",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:23.884+00:00"
-    },
-    {
       "id": "exp-q-1793306611384",
       "question_id": "q-1793306611384",
       "choice_id": "c-q-1793306611384-0",
@@ -17291,19 +16472,6 @@
       "source_page": "17",
       "source_reference": "Core Curriculum",
       "created_at": "2026-10-29T21:35:18.893+00:00"
-    },
-    {
-      "id": "exp-q-1793306641369",
-      "question_id": "q-1793306641369",
-      "choice_id": "c-q-1793306641369-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Incorrect: Vancomycin can cause ototoxicity and nephrotoxicity, but it has ZERO activity against Gram-negative Pseudomonas aeruginosa (restricted to Gram-positive bacteria).",
-      "is_why_correct": false,
-      "is_why_incorrect": true,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 36 (PDF p. 39)",
-      "source_page": "36",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:24.84+00:00"
     },
     {
       "id": "exp-q-1793306611364-c",
@@ -17590,19 +16758,6 @@
       "source_page": "p. Reference",
       "source_reference": "Core Curriculum",
       "created_at": "2026-10-29T21:34:17.473+00:00"
-    },
-    {
-      "id": "exp-q-1793306641370",
-      "question_id": "q-1793306641370",
-      "choice_id": "c-q-1793306641370-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Correct: Ciprofloxacin is a fluoroquinolone that exhibits exceptional penetration into prostatic fluid and prostatic tissue (concentrated intracellularly) and provides bactericidal activity against beta-lactam-resistant Gram-negative uropathogens.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 47 (PDF p. 50)",
-      "source_page": "47",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:25.692+00:00"
     },
     {
       "id": "exp-q-1793306616377",
@@ -18008,19 +17163,6 @@
       "created_at": "2026-10-29T21:35:01.73+00:00"
     },
     {
-      "id": "exp-q-1793306641376",
-      "question_id": "q-1793306641376",
-      "choice_id": "c-q-1793306641376-0",
-      "choice_letter": "A",
-      "explanation_text": "Explanation (A) — Correct: Fluoroquinolones exert their bactericidal action by inhibiting bacterial DNA gyrase (topoisomerase II) and topoisomerase IV, preventing the relaxation of supercoiled DNA and causing double-stranded DNA breaks that block bacterial DNA replication.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": "HAEM 202 part (4) 2027-pharma.pdf, printed p. 28 (PDF p. 31)",
-      "source_page": "28",
-      "source_reference": "Core Curriculum",
-      "created_at": "2026-10-29T21:35:31.427+00:00"
-    },
-    {
       "id": "exp-q-1793306611377-d",
       "question_id": "q-1793306611377",
       "choice_id": "c-q-1793306611377-3",
@@ -18357,32 +17499,6 @@
       "source_page": null,
       "source_reference": "Medical Curriculum Core Reference",
       "created_at": "2026-10-29T23:03:31.037597+00:00"
-    },
-    {
-      "id": "exp-q-1793306641364-c",
-      "question_id": "q-1793306641364",
-      "choice_id": "c-q-1793306641364-2",
-      "choice_letter": "C",
-      "explanation_text": "Explanation (C) — Correct: Statins (such as simvastatin) and daptomycin both exhibit skeletal muscle toxicity; co-administration substantially elevates the risk of severe myopathy and rhabdomyolysis.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:35.079572+00:00"
-    },
-    {
-      "id": "exp-q-1793306641366-d",
-      "question_id": "q-1793306641366",
-      "choice_id": "c-q-1793306641366-3",
-      "choice_letter": "D",
-      "explanation_text": "Explanation (D) — Correct: Sulfamethoxazole is synergistically combined with trimethoprim (co-trimoxazole / TMP-SMX) for the treatment of uncomplicated urinary tract infections.",
-      "is_why_correct": true,
-      "is_why_incorrect": false,
-      "source_document": null,
-      "source_page": null,
-      "source_reference": "Medical Curriculum Core Reference",
-      "created_at": "2026-10-29T23:03:35.539508+00:00"
     },
     {
       "id": "exp-q-1793306611389",
