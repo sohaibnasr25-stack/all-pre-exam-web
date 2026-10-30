@@ -601,6 +601,60 @@ D) Normal myocardium with subtle wavy fibers only
     }
   };
 
+  const handleEditAcademicYear = async (year: AcademicYear) => {
+    const newName = prompt('اسم العام الدراسي الجديد (Academic Year Name):', year.name);
+    if (!newName || !newName.trim()) return;
+    const newCode = prompt('كود العام الدراسي (Code):', year.code);
+    if (!newCode || !newCode.trim()) return;
+
+    try {
+      const res = await adminFetch('/api/academic-years', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: year.id, name: newName.trim(), code: newCode.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', `تم تعديل العام الدراسي إلى "${newName.trim()}" بنجاح`);
+        setAcademicYears((prev) =>
+          prev.map((y) => (y.id === year.id ? { ...y, name: newName.trim(), code: newCode.trim() } : y))
+        );
+        refreshAllData();
+      } else {
+        showFeedback('error', data.message || 'فشل تعديل العام الدراسي');
+      }
+    } catch (err) {
+      showFeedback('error', String(err));
+    }
+  };
+
+  const handleEditModule = async (mod: Module) => {
+    const newName = prompt('اسم الموديول الجديد (Module Name):', mod.name);
+    if (!newName || !newName.trim()) return;
+    const newCode = prompt('كود الموديول الجديد (Code):', mod.code);
+    if (!newCode || !newCode.trim()) return;
+
+    try {
+      const res = await adminFetch('/api/modules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: mod.id, name: newName.trim(), code: newCode.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('success', `تم تعديل الموديول إلى "${newName.trim()}" بنجاح`);
+        setModules((prev) =>
+          prev.map((m) => (m.id === mod.id ? { ...m, name: newName.trim(), code: newCode.trim() } : m))
+        );
+        refreshAllData();
+      } else {
+        showFeedback('error', data.message || 'فشل تعديل الموديول');
+      }
+    } catch (err) {
+      showFeedback('error', String(err));
+    }
+  };
+
   const handleAddModuleToYear = async (year: AcademicYear) => {
     const name = prompt(`اسم الموديول الجديد للعام الدراسي "${year.name}":`);
     if (!name || !name.trim()) return;
@@ -1282,6 +1336,16 @@ D) Normal myocardium with subtle wavy fibers only
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                       <button
                         type="button"
+                        onClick={() => handleEditAcademicYear(year)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ gap: '0.35rem', fontSize: '0.82rem' }}
+                        title="تعديل اسم أو كود هذا العام الدراسي"
+                      >
+                        <Edit size={13} />
+                        <span>تعديل العام</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleAddModuleToYear(year)}
                         className="btn btn-primary btn-sm"
                         style={{ gap: '0.35rem', fontSize: '0.82rem' }}
@@ -1350,7 +1414,17 @@ D) Normal myocardium with subtle wavy fibers only
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <div>
-                                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{mod.name}</div>
+                                <div style={{ fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <span>{mod.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditModule(mod)}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                    title="تعديل اسم أو كود هذا الموديول"
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+                                </div>
                                 <div style={{ fontSize: '0.76rem', color: 'var(--text-dim)' }}>كود: {mod.code}</div>
                               </div>
                               <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>
@@ -1463,6 +1537,16 @@ D) Normal myocardium with subtle wavy fibers only
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEditModule(mod)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ gap: '0.35rem', fontSize: '0.82rem' }}
+                        title="تعديل اسم أو كود هذا الموديول"
+                      >
+                        <Edit size={13} />
+                        <span>تعديل الموديول</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleAddExamToModule(mod)}

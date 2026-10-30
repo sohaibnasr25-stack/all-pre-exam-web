@@ -569,8 +569,8 @@ export default function QuestionCard({
                           borderRadius: 'var(--radius-sm)',
                           fontSize: '0.86rem',
                           lineHeight: 1.5,
-                          background: isWhyCorrect ? 'var(--success-bg)' : 'var(--bg-surface-elevated)',
-                          borderLeft: `3px solid ${isWhyCorrect ? 'var(--success)' : 'var(--border-subtle)'}`,
+                          background: isWhyCorrect ? 'var(--success-bg)' : isSelected ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-surface-elevated)',
+                          borderLeft: `3px solid ${isWhyCorrect ? 'var(--success)' : 'var(--error)'}`,
                           color: 'var(--text-muted)',
                           border: '1px solid var(--border-subtle)',
                           borderLeftWidth: '3px',
@@ -590,9 +590,10 @@ export default function QuestionCard({
                     );
                   }
 
-                  // If student selected this incorrect choice and it lacks a dedicated explanation row
-                  if (isSelected && !choice.is_correct) {
-                    const correctChoiceObj = question.answer_choices.find((c) => c.is_correct);
+                  // If choice lacks a dedicated explanation row, display an informative explanation
+                  const correctChoiceObj = question.answer_choices.find((c) => c.is_correct);
+
+                  if (choice.is_correct) {
                     return (
                       <div
                         className="animate-explanation-reveal"
@@ -602,29 +603,55 @@ export default function QuestionCard({
                           borderRadius: 'var(--radius-sm)',
                           fontSize: '0.86rem',
                           lineHeight: 1.5,
-                          background: 'rgba(239, 68, 68, 0.08)',
-                          border: '1px solid rgba(239, 68, 68, 0.25)',
-                          borderLeft: '3px solid var(--error)',
-                          color: 'var(--text-main)',
+                          background: 'var(--success-bg)',
+                          borderLeft: '3px solid var(--success)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border-subtle)',
+                          borderLeftWidth: '3px',
                         }}
                       >
-                        <strong style={{ color: 'var(--error)', marginRight: '0.35rem' }}>
-                          Why Incorrect:
+                        <strong style={{ color: 'var(--success)', marginRight: '0.35rem' }}>
+                          Why Correct:
                         </strong>
                         <span>
-                          Choice {choice.choice_letter} is not the correct answer. The correct answer is Choice {correctChoiceObj?.choice_letter || ''} {correctChoiceObj?.choice_text ? `(${correctChoiceObj.choice_text})` : ''}.
+                          {mainExplanation?.explanation_text
+                            ? cleanExplanationText(mainExplanation.explanation_text).text
+                            : `Choice ${choice.choice_letter} (${choice.choice_text}) is the verified correct answer.`}
                         </span>
-                        {mainExplanation?.explanation_text && (
-                          <div style={{ marginTop: '0.45rem', color: 'var(--text-muted)', fontSize: '0.83rem' }}>
-                            <strong>Clinical Rationale: </strong>
-                            {cleanExplanationText(mainExplanation.explanation_text).text}
-                          </div>
-                        )}
                       </div>
                     );
                   }
 
-                  return null;
+                  // Incorrect Choice without dedicated row
+                  return (
+                    <div
+                      className="animate-explanation-reveal"
+                      style={{
+                        margin: '0.4rem 0 0.5rem 3.5rem',
+                        padding: '0.75rem 1rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.86rem',
+                        lineHeight: 1.5,
+                        background: isSelected ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderLeft: '3px solid var(--error)',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      <strong style={{ color: 'var(--error)', marginRight: '0.35rem' }}>
+                        Why Incorrect:
+                      </strong>
+                      <span>
+                        Choice {choice.choice_letter} ({choice.choice_text}) is incorrect. The verified correct answer is Choice {correctChoiceObj?.choice_letter || ''} {correctChoiceObj?.choice_text ? `(${correctChoiceObj.choice_text})` : ''}.
+                      </span>
+                      {mainExplanation?.explanation_text && (
+                        <div style={{ marginTop: '0.45rem', color: 'var(--text-muted)', fontSize: '0.83rem' }}>
+                          <strong style={{ color: 'var(--text-main)' }}>Clinical Rationale: </strong>
+                          {cleanExplanationText(mainExplanation.explanation_text).text}
+                        </div>
+                      )}
+                    </div>
+                  );
                 })()
               )}
             </div>
