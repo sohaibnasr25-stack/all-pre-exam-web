@@ -169,7 +169,7 @@ export default function CompleteExamsPage() {
             <option value="all">All Academic Years</option>
             {academicYears.map((year) => (
               <option key={year.id} value={year.id}>
-                {year.name} ({year.code})
+                {year.name}
               </option>
             ))}
           </select>
@@ -187,7 +187,7 @@ export default function CompleteExamsPage() {
             <option value="all">All Modules</option>
             {visibleModules.map((mod) => (
               <option key={mod.id} value={mod.id}>
-                {mod.name} ({mod.code})
+                {mod.name}
               </option>
             ))}
           </select>

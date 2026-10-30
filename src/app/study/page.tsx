@@ -83,8 +83,8 @@ export default function StudyHierarchyPage() {
     ? modules
     : modules.filter((m) => m.academic_year_id === selectedYearId);
 
-  // Filter subjects based on selected Academic Year and Module
-  const visibleSubjects = subjects.filter((s) => {
+  // Filter subjects based on selected Academic Year and Module (with defensive deduplication by normalized name)
+  const rawVisibleSubjects = subjects.filter((s) => {
     if (selectedModuleId !== 'all') {
       return s.module_id === selectedModuleId;
     }
@@ -92,6 +92,14 @@ export default function StudyHierarchyPage() {
       const allowedModuleIds = visibleModules.map((m) => m.id);
       return allowedModuleIds.includes(s.module_id);
     }
+    return true;
+  });
+
+  const seenSubNames = new Set<string>();
+  const visibleSubjects = rawVisibleSubjects.filter((s) => {
+    const key = (s.name || '').trim().toLowerCase();
+    if (seenSubNames.has(key)) return false;
+    seenSubNames.add(key);
     return true;
   });
 
@@ -110,8 +118,21 @@ export default function StudyHierarchyPage() {
     }
   }, [visibleSubjects, selectedSubjectId]);
 
-  // Filtered chapters for current subject
-  const currentChapters = chapters.filter((c) => c.subject_id === selectedSubjectId);
+  // Current active subject and related matching subjects (to handle any edge case variations)
+  const activeSubject = subjects.find((s) => s.id === selectedSubjectId);
+  const relatedSubjectIds = subjects
+    .filter((s) => s.id === selectedSubjectId || (activeSubject && s.name.trim().toLowerCase() === activeSubject.name.trim().toLowerCase()))
+    .map((s) => s.id);
+
+  // Filtered chapters for current subject (with defensive deduplication by name)
+  const rawCurrentChapters = chapters.filter((c) => relatedSubjectIds.includes(c.subject_id));
+  const seenChapNames = new Set<string>();
+  const currentChapters = rawCurrentChapters.filter((c) => {
+    const key = (c.name || '').trim().toLowerCase();
+    if (seenChapNames.has(key)) return false;
+    seenChapNames.add(key);
+    return true;
+  });
 
   // Automatically select first chapter when subject changes if not selected
   useEffect(() => {
@@ -130,15 +151,20 @@ export default function StudyHierarchyPage() {
       return q.concept_id === selectedConceptId;
     }
     if (selectedChapterId) {
-      return q.chapter_id === selectedChapterId;
+      const targetChap = chapters.find((c) => c.id === selectedChapterId);
+      if (q.chapter_id === selectedChapterId) return true;
+      if (targetChap) {
+        const qChap = chapters.find((c) => c.id === q.chapter_id);
+        if (qChap && qChap.name.trim().toLowerCase() === targetChap.name.trim().toLowerCase()) return true;
+      }
+      return false;
     }
     if (selectedSubjectId) {
-      return q.subject_id === selectedSubjectId;
+      return relatedSubjectIds.includes(q.subject_id);
     }
     return true;
   });
 
-  const activeSubject = subjects.find((s) => s.id === selectedSubjectId);
   const activeChapter = chapters.find((c) => c.id === selectedChapterId);
   const activeConcept = concepts.find((c) => c.id === selectedConceptId);
 
@@ -191,7 +217,7 @@ export default function StudyHierarchyPage() {
             <option value="all">All Academic Years</option>
             {academicYears.map((year) => (
               <option key={year.id} value={year.id}>
-                {year.name} ({year.code})
+                {year.name}
               </option>
             ))}
           </select>
@@ -209,7 +235,7 @@ export default function StudyHierarchyPage() {
             <option value="all">All Modules</option>
             {visibleModules.map((mod) => (
               <option key={mod.id} value={mod.id}>
-                {mod.name} ({mod.code})
+                {mod.name}
               </option>
             ))}
           </select>
@@ -247,7 +273,10 @@ export default function StudyHierarchyPage() {
         >
           {visibleSubjects.map((sub) => {
             const isSelected = sub.id === selectedSubjectId;
-            const qCount = questions.filter((q) => q.subject_id === sub.id).length;
+            const subEquivalentIds = subjects
+              .filter((s) => s.id === sub.id || s.name.trim().toLowerCase() === sub.name.trim().toLowerCase())
+              .map((s) => s.id);
+            const qCount = questions.filter((q) => subEquivalentIds.includes(q.subject_id)).length;
             return (
               <button
                 key={sub.id}
@@ -339,7 +368,9 @@ export default function StudyHierarchyPage() {
           {activeSubject && (
             <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span className="badge badge-teal">{activeSubject.code}</span>
+                <span className="badge badge-teal">
+                  {activeSubject.code && !activeSubject.code.startsWith('SUB-') ? activeSubject.code : 'Subject'}
+                </span>
                 <Link
                   href={`/practice/subject_practice/${activeSubject.id}`}
                   className="btn btn-primary btn-sm"

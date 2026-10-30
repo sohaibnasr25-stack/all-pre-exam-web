@@ -4303,7 +4303,7 @@ C) Choice C"
             >
               <strong>الموديول المصدر المراد نقله وحذفه:</strong>
               <div style={{ marginTop: '0.25rem', fontWeight: 700, color: '#f87171' }}>
-                {sourceModuleToMerge.name} ({sourceModuleToMerge.code})
+                {sourceModuleToMerge.name}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
                 يحتوي على: {exams.filter((e) => e.module_id === sourceModuleToMerge.id).length} امتحانات •{' '}
@@ -4326,7 +4326,7 @@ C) Choice C"
                   .filter((m) => m.id !== sourceModuleToMerge.id)
                   .map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.name} ({m.code})
+                      {m.name}
                     </option>
                   ))}
               </select>

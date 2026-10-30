@@ -1968,14 +1968,126 @@ export async function mergeModules(sourceModuleId: string, targetModuleId: strin
     }
   });
 
-  // 2. Move subjects
+  // 2. Move & deduplicate subjects and chapters
   let movedSubjects = 0;
-  store.subjects.forEach((s) => {
-    if (s.module_id === sourceModuleId) {
-      s.module_id = targetModuleId;
+  const sourceSubjects = store.subjects.filter((s) => s.module_id === sourceModuleId);
+  const subjectsToDeleteFromLocal: string[] = [];
+  const chaptersToDeleteFromLocal: string[] = [];
+
+  for (const sSub of sourceSubjects) {
+    const matchingTargetSub = store.subjects.find(
+      (t) => t.module_id === targetModuleId && t.name.trim().toLowerCase() === sSub.name.trim().toLowerCase()
+    );
+
+    if (matchingTargetSub) {
+      // Merge sSub into matchingTargetSub
+      subjectsToDeleteFromLocal.push(sSub.id);
+      const sChapters = store.chapters.filter((c) => c.subject_id === sSub.id);
+
+      for (const sChap of sChapters) {
+        const matchingTargetChap = store.chapters.find(
+          (tc) => tc.subject_id === matchingTargetSub.id && tc.name.trim().toLowerCase() === sChap.name.trim().toLowerCase()
+        );
+
+        if (matchingTargetChap) {
+          chaptersToDeleteFromLocal.push(sChap.id);
+          store.concepts.forEach((con) => {
+            if (con.chapter_id === sChap.id) con.chapter_id = matchingTargetChap.id;
+          });
+          store.questions.forEach((q) => {
+            if (q.chapter_id === sChap.id) {
+              q.chapter_id = matchingTargetChap.id;
+              q.subject_id = matchingTargetSub.id;
+              q.module_id = targetModuleId;
+              q.academic_year_id = targetYearId;
+            }
+          });
+
+          if (supabase) {
+            try {
+              await supabase.from('concepts').update({ chapter_id: matchingTargetChap.id }).eq('chapter_id', sChap.id);
+              await supabase.from('questions').update({
+                chapter_id: matchingTargetChap.id,
+                subject_id: matchingTargetSub.id,
+                module_id: targetModuleId,
+                academic_year_id: targetYearId,
+              }).eq('chapter_id', sChap.id);
+              await supabase.from('chapters').delete().eq('id', sChap.id);
+            } catch (err) {
+              console.error('[mergeModules] Supabase chapter merge error:', err);
+            }
+          }
+        } else {
+          // Move chapter to matchingTargetSub
+          sChap.subject_id = matchingTargetSub.id;
+          store.questions.forEach((q) => {
+            if (q.chapter_id === sChap.id) {
+              q.subject_id = matchingTargetSub.id;
+              q.module_id = targetModuleId;
+              q.academic_year_id = targetYearId;
+            }
+          });
+
+          if (supabase) {
+            try {
+              await supabase.from('chapters').update({ subject_id: matchingTargetSub.id }).eq('id', sChap.id);
+              await supabase.from('questions').update({
+                subject_id: matchingTargetSub.id,
+                module_id: targetModuleId,
+                academic_year_id: targetYearId,
+              }).eq('chapter_id', sChap.id);
+            } catch (err) {
+              console.error('[mergeModules] Supabase chapter move error:', err);
+            }
+          }
+        }
+      }
+
+      // Reassign any remaining questions for sSub
+      store.questions.forEach((q) => {
+        if (q.subject_id === sSub.id) {
+          q.subject_id = matchingTargetSub.id;
+          q.module_id = targetModuleId;
+          q.academic_year_id = targetYearId;
+        }
+      });
+
+      if (supabase) {
+        try {
+          await supabase.from('questions').update({
+            subject_id: matchingTargetSub.id,
+            module_id: targetModuleId,
+            academic_year_id: targetYearId,
+          }).eq('subject_id', sSub.id);
+          await supabase.from('subjects').delete().eq('id', sSub.id);
+        } catch (err) {
+          console.error('[mergeModules] Supabase subject delete error:', err);
+        }
+      }
+    } else {
+      // No duplicate subject, simply repoint to target module
+      sSub.module_id = targetModuleId;
       movedSubjects++;
+      store.questions.forEach((q) => {
+        if (q.subject_id === sSub.id) {
+          q.module_id = targetModuleId;
+          q.academic_year_id = targetYearId;
+        }
+      });
+
+      if (supabase) {
+        try {
+          await supabase.from('subjects').update({ module_id: targetModuleId }).eq('id', sSub.id);
+        } catch (err) {
+          console.error('[mergeModules] Supabase subject move error:', err);
+        }
+      }
     }
-  });
+  }
+
+  // Remove merged local subjects and chapters
+  store.subjects = store.subjects.filter((s) => !subjectsToDeleteFromLocal.includes(s.id));
+  store.chapters = store.chapters.filter((c) => !chaptersToDeleteFromLocal.includes(c.id));
 
   // 3. Move questions
   let movedQuestions = 0;
@@ -2000,13 +2112,6 @@ export async function mergeModules(sourceModuleId: string, targetModuleId: strin
         .eq('module_id', sourceModuleId)
         .select('id');
       if (movedExData) movedExams = Math.max(movedExams, movedExData.length);
-
-      const { data: movedSubData } = await supabase
-        .from('subjects')
-        .update({ module_id: targetModuleId })
-        .eq('module_id', sourceModuleId)
-        .select('id');
-      if (movedSubData) movedSubjects = Math.max(movedSubjects, movedSubData.length);
 
       const { data: movedQData } = await supabase
         .from('questions')

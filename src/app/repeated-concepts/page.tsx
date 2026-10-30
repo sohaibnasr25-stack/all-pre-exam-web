@@ -72,8 +72,8 @@ export default function RepeatedConceptsPage() {
     ? modules
     : modules.filter((m) => m.academic_year_id === selectedYearId);
 
-  // 2. Subjects filtered by Module (or Year if module is 'all')
-  const visibleSubjects = subjects.filter((s) => {
+  // 2. Subjects filtered by Module (or Year if module is 'all') with defensive deduplication
+  const rawVisibleSubjects = subjects.filter((s) => {
     if (selectedModuleId !== 'all') {
       return s.module_id === selectedModuleId;
     }
@@ -81,6 +81,14 @@ export default function RepeatedConceptsPage() {
       const allowedModuleIds = visibleModules.map((m) => m.id);
       return allowedModuleIds.includes(s.module_id);
     }
+    return true;
+  });
+
+  const seenSubNames = new Set<string>();
+  const visibleSubjects = rawVisibleSubjects.filter((s) => {
+    const key = (s.name || '').trim().toLowerCase();
+    if (seenSubNames.has(key)) return false;
+    seenSubNames.add(key);
     return true;
   });
 
@@ -103,7 +111,12 @@ export default function RepeatedConceptsPage() {
 
     // Subject filter
     if (selectedSubjectId !== 'all') {
-      if (item.subject_id && item.subject_id !== selectedSubjectId) return false;
+      const selectedSub = subjects.find((s) => s.id === selectedSubjectId);
+      if (item.subject_id) {
+        const itemSub = subjects.find((s) => s.id === item.subject_id);
+        const matchesName = selectedSub && itemSub && itemSub.name.trim().toLowerCase() === selectedSub.name.trim().toLowerCase();
+        if (item.subject_id !== selectedSubjectId && !matchesName) return false;
+      }
     }
 
     return true;
@@ -168,7 +181,7 @@ export default function RepeatedConceptsPage() {
             <option value="all">All Academic Years</option>
             {academicYears.map((year) => (
               <option key={year.id} value={year.id}>
-                {year.name} ({year.code})
+                {year.name}
               </option>
             ))}
           </select>
@@ -189,7 +202,7 @@ export default function RepeatedConceptsPage() {
             <option value="all">All Modules</option>
             {visibleModules.map((mod) => (
               <option key={mod.id} value={mod.id}>
-                {mod.name} ({mod.code})
+                {mod.name}
               </option>
             ))}
           </select>
