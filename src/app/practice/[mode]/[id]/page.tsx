@@ -66,6 +66,8 @@ function PracticeInner({ params }: PracticePageProps) {
 
   // Exam timing & status
   const [durationMinutes, setDurationMinutes] = useState(60);
+  const [isUntimed, setIsUntimed] = useState(false);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(60 * 60);
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [timeSpentSeconds, setTimeSpentSeconds] = useState(0);
@@ -189,11 +191,20 @@ function PracticeInner({ params }: PracticePageProps) {
 
   // Synchronize timer countdown
   useEffect(() => {
-    setSecondsRemaining(durationMinutes * 60);
-  }, [durationMinutes]);
+    if (!isUntimed) {
+      setSecondsRemaining(durationMinutes * 60);
+    }
+  }, [durationMinutes, isUntimed]);
 
   useEffect(() => {
-    if (!sessionStarted || mode !== 'complete_exam' || isSubmitted) return;
+    if (!sessionStarted || isSubmitted) return;
+
+    if (isUntimed) {
+      const timer = setInterval(() => {
+        setTimeSpentSeconds((prev) => prev + 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
 
     const timer = setInterval(() => {
       setSecondsRemaining((prev) => {
@@ -207,7 +218,11 @@ function PracticeInner({ params }: PracticePageProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [sessionStarted, mode, isSubmitted]);
+  }, [sessionStarted, isUntimed, isSubmitted]);
+
+  const handleAddMinutes = () => {
+    setSecondsRemaining((prev) => prev + 300); // Quick add 5 minutes
+  };
 
   const formatTimer = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);
@@ -523,8 +538,10 @@ function PracticeInner({ params }: PracticePageProps) {
                 <Clock size={18} />
               </div>
               <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>الوقت المخصص</div>
-                <strong style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>{durationMinutes} دقيقة</strong>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>الوقت المختار</div>
+                <strong style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                  {isUntimed ? 'مفتوح (بدون مؤقت)' : `${durationMinutes} دقيقة`}
+                </strong>
               </div>
             </div>
 
@@ -690,6 +707,131 @@ function PracticeInner({ params }: PracticePageProps) {
             </div>
           </div>
 
+          {/* Student-Controlled Timer Selection Section (حرية كاملة للطالب في تحديد وقت الحل) */}
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Clock size={18} color="#f59e0b" />
+                <span>تحديد وقت الحل (مدة الجلسة):</span>
+              </h2>
+              <span style={{ fontSize: '0.78rem', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                قرار حر للطالب بالكامل
+              </span>
+            </div>
+            <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              اختر الوقت المناسب لك لحل الأسئلة، أو اختر وضع الجلسة المفتوحة لحل حر دون أي ضغط أو قيود زمنية:
+            </p>
+
+            {/* Time Presets */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: '0.6rem', marginBottom: '0.9rem' }}>
+              {[15, 30, 45, 60, 90, 120].map((mins) => {
+                const isSelected = !isUntimed && durationMinutes === mins && !isCustomDuration;
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => {
+                      setIsUntimed(false);
+                      setIsCustomDuration(false);
+                      setDurationMinutes(mins);
+                    }}
+                    className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                    style={{
+                      padding: '0.65rem 0.5rem',
+                      borderRadius: 'var(--radius-md)',
+                      fontWeight: 700,
+                      fontSize: '0.88rem',
+                      border: isSelected ? '2px solid var(--border-focus)' : '1px solid var(--border-subtle)',
+                      background: isSelected ? 'linear-gradient(135deg, #0d9488 0%, #0284c7 100%)' : 'var(--bg-surface-elevated)',
+                      color: isSelected ? '#ffffff' : 'var(--text-main)',
+                      boxShadow: isSelected ? '0 4px 14px rgba(13, 148, 136, 0.4)' : 'none',
+                    }}
+                  >
+                    {mins} دقيقة
+                  </button>
+                );
+              })}
+
+              {/* Custom Minutes Option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUntimed(false);
+                  setIsCustomDuration(true);
+                }}
+                className={`btn ${isCustomDuration && !isUntimed ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                style={{
+                  padding: '0.65rem 0.5rem',
+                  borderRadius: 'var(--radius-md)',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  border: isCustomDuration && !isUntimed ? '2px solid var(--border-focus)' : '1px solid var(--border-subtle)',
+                  background: isCustomDuration && !isUntimed ? 'linear-gradient(135deg, #0d9488 0%, #0284c7 100%)' : 'var(--bg-surface-elevated)',
+                  color: isCustomDuration && !isUntimed ? '#ffffff' : 'var(--text-main)',
+                }}
+              >
+                ⚙️ وقت مخصص
+              </button>
+
+              {/* Untimed Option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUntimed(true);
+                  setIsCustomDuration(false);
+                }}
+                className={`btn ${isUntimed ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                style={{
+                  padding: '0.65rem 0.5rem',
+                  borderRadius: 'var(--radius-md)',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  border: isUntimed ? '2px solid #a855f7' : '1px solid var(--border-subtle)',
+                  background: isUntimed ? 'rgba(168, 85, 247, 0.25)' : 'var(--bg-surface-elevated)',
+                  color: isUntimed ? '#c084fc' : 'var(--text-main)',
+                }}
+              >
+                ♾️ وقت مفتوح
+              </button>
+            </div>
+
+            {/* Custom Duration Input Field */}
+            {isCustomDuration && !isUntimed && (
+              <div
+                className="animate-fade-in"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem 1rem',
+                  background: 'var(--bg-surface-elevated)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-focus)',
+                  maxWidth: '360px',
+                }}
+              >
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                  عدد الدقائق المطلوبة:
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={600}
+                  value={durationMinutes}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val) && val > 0) {
+                      setDurationMinutes(Math.min(600, val));
+                    }
+                  }}
+                  className="form-input"
+                  style={{ width: '85px', padding: '0.4rem 0.6rem', textAlign: 'center', fontWeight: 700, fontSize: '0.95rem' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>دقيقة</span>
+              </div>
+            )}
+          </div>
+
           {/* Saved Session Notice if any */}
           {hasSavedProgress && Object.keys(answers).length > 0 && (
             <div
@@ -804,10 +946,18 @@ function PracticeInner({ params }: PracticePageProps) {
               سؤال <strong>{currentIndex + 1}</strong> <span style={{ opacity: 0.6 }}>/ {questions.length}</span>
             </span>
 
-            {mode === 'complete_exam' && !isSubmitted && (
-              <span className={`mobile-timer-pill ${secondsRemaining < 300 ? 'urgent' : ''}`}>
+            {!isSubmitted && (
+              <span
+                onClick={!isUntimed ? handleAddMinutes : undefined}
+                className={`mobile-timer-pill ${!isUntimed && secondsRemaining < 300 ? 'urgent' : ''}`}
+                title={!isUntimed ? 'انقر لإضافة 5 دقائق إضافية (+5m)' : 'جلسة بدون مؤقت'}
+                style={{ cursor: !isUntimed ? 'pointer' : 'default' }}
+              >
                 <Clock size={13} />
-                <span>{formatTimer(secondsRemaining)}</span>
+                <span>{isUntimed ? 'مفتوح' : formatTimer(secondsRemaining)}</span>
+                {!isUntimed && (
+                  <span style={{ fontSize: '0.65rem', opacity: 0.85, color: '#38bdf8', marginRight: '2px' }}>+5د</span>
+                )}
               </span>
             )}
 
@@ -934,6 +1084,8 @@ function PracticeInner({ params }: PracticePageProps) {
               secondsRemaining={secondsRemaining}
               isExamMode={mode === 'complete_exam'}
               isSubmitted={false}
+              isUntimed={isUntimed}
+              onAddMinutes={handleAddMinutes}
               onSelectIndex={handleJumpToQuestion}
               onPrevious={handlePrevQuestion}
               onNext={handleNextQuestion}

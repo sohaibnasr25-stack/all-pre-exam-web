@@ -20,6 +20,8 @@ interface QuestionNavigationProps {
   secondsRemaining?: number;
   isExamMode: boolean;
   isSubmitted: boolean;
+  isUntimed?: boolean;
+  onAddMinutes?: () => void;
   onSelectIndex: (index: number) => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -36,6 +38,8 @@ export default function QuestionNavigation({
   secondsRemaining: externalSeconds,
   isExamMode,
   isSubmitted,
+  isUntimed = false,
+  onAddMinutes,
   onSelectIndex,
   onPrevious,
   onNext,
@@ -121,24 +125,35 @@ export default function QuestionNavigation({
           </div>
         </div>
 
-        {/* Timer Display (if in exam mode) */}
-        {isExamMode && !isSubmitted && (
+        {/* Timer Display (controlled entirely by the student) */}
+        {!isSubmitted && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              padding: '0.5rem 1rem',
+              padding: '0.5rem 0.85rem',
               borderRadius: 'var(--radius-md)',
-              background: secondsRemaining < 300 ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-surface-elevated)',
-              border: `1px solid ${secondsRemaining < 300 ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-subtle)'}`,
-              color: secondsRemaining < 300 ? '#f87171' : 'var(--text-main)',
+              background: !isUntimed && secondsRemaining < 300 ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-surface-elevated)',
+              border: `1px solid ${!isUntimed && secondsRemaining < 300 ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-subtle)'}`,
+              color: !isUntimed && secondsRemaining < 300 ? '#f87171' : 'var(--text-main)',
               fontWeight: 700,
-              fontSize: '1.05rem',
+              fontSize: '1rem',
             }}
           >
-            <Clock size={18} color={secondsRemaining < 300 ? '#f87171' : '#06b6d4'} />
-            <span>{formatTimer(secondsRemaining)}</span>
+            <Clock size={17} color={!isUntimed && secondsRemaining < 300 ? '#f87171' : '#06b6d4'} />
+            <span>{isUntimed ? 'جلسة مفتوحة (بدون مؤقت)' : formatTimer(secondsRemaining)}</span>
+            {!isUntimed && onAddMinutes && (
+              <button
+                type="button"
+                onClick={onAddMinutes}
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '0.15rem 0.45rem', fontSize: '0.72rem', color: '#38bdf8', marginLeft: '0.2rem' }}
+                title="إضافة 5 دقائق لوقت الحل"
+              >
+                +5 د
+              </button>
+            )}
           </div>
         )}
 
