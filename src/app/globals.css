@@ -3,8 +3,6 @@
 :root {
   color-scheme: dark;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --fixed-footer-height: 38px;
-  --fixed-footer-height-mobile: 44px;
   
   /* Dark Theme Palette (Default) */
   --bg-base: #080d1a;
@@ -1306,15 +1304,15 @@ dialog::backdrop {
 }
 
 @media (max-width: 990px) {
-  /* Show bottom nav on mobile/tablet positioned directly above fixed footer */
+  /* Show bottom nav on mobile/tablet */
   .mobile-bottom-nav {
     display: flex;
-    bottom: var(--fixed-footer-height-mobile, 44px);
+    bottom: 0;
   }
 
-  /* Add bottom padding to page so bottom nav and footer don't overlap content */
+  /* Add bottom padding to page so mobile bottom nav doesn't overlap content */
   body {
-    padding-bottom: calc(var(--fixed-footer-height-mobile, 44px) + 85px + env(safe-area-inset-bottom, 16px));
+    padding-bottom: calc(85px + env(safe-area-inset-bottom, 16px));
   }
 
   /* Dashboard hero banner — stack vertically and compact */
@@ -1396,40 +1394,31 @@ dialog::backdrop {
 }
 
 /* ==========================================================
-   PREMIUM FIXED FOOTER - Luxurious Navy & Metallic Gold
+   PREMIUM STATIC FOOTER - Luxurious Navy & Metallic Gold
+   Anchored at the end of page content (does not follow scroll)
    ========================================================== */
 
-@media (min-width: 991px) {
-  body {
-    padding-bottom: calc(var(--fixed-footer-height, 38px) + 20px);
-  }
-}
-
-.premium-fixed-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 48;
-  height: var(--fixed-footer-height, 38px);
+.premium-page-footer {
+  position: relative;
+  width: 100%;
+  margin-top: auto;
+  z-index: 20;
   background: linear-gradient(180deg, #090e1b 0%, #050811 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid rgba(212, 175, 55, 0.38);
-  box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.55), 0 -1px 3px rgba(212, 175, 55, 0.18);
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.4), 0 -1px 3px rgba(212, 175, 55, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   user-select: none;
-  pointer-events: auto;
+  padding: 1rem 0;
   transition: all 0.25s ease;
 }
 
-[data-theme="light"] .premium-fixed-footer {
+[data-theme="light"] .premium-page-footer {
   /* Preserves luxurious dark navy aesthetic in all themes as requested */
   background: linear-gradient(180deg, #090e1b 0%, #050811 100%);
   border-top: 1px solid rgba(212, 175, 55, 0.45);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3), 0 -1px 3px rgba(212, 175, 55, 0.22);
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.25), 0 -1px 3px rgba(212, 175, 55, 0.2);
 }
 
 /* Subtle Golden Top Glow Line with Soft Shimmer */
@@ -1536,14 +1525,14 @@ dialog::backdrop {
 
 /* Responsive Footer Adaptations */
 @media (max-width: 768px) {
-  .premium-fixed-footer {
-    height: var(--fixed-footer-height-mobile, 44px);
+  .premium-page-footer {
+    padding: 0.85rem 0;
   }
 
   .premium-footer-container {
     padding: 0 0.85rem;
     justify-content: center;
-    gap: 0.65rem;
+    gap: 0.75rem;
   }
 
   .premium-footer-label {
@@ -1565,19 +1554,15 @@ dialog::backdrop {
 }
 
 @media (max-width: 480px) {
-  :root {
-    --fixed-footer-height-mobile: 46px;
-  }
-
-  .premium-fixed-footer {
-    height: var(--fixed-footer-height-mobile, 46px);
+  .premium-page-footer {
+    padding: 0.75rem 0;
   }
 
   .premium-footer-container {
     flex-direction: column;
     justify-content: center;
-    gap: 0.15rem;
-    padding: 0.2rem 0.5rem;
+    gap: 0.35rem;
+    padding: 0 0.5rem;
   }
 
   .premium-footer-divider {
@@ -1585,16 +1570,16 @@ dialog::backdrop {
   }
 
   .premium-footer-label {
-    font-size: 0.66rem;
+    font-size: 0.68rem;
   }
 
   .premium-footer-author {
-    font-size: 0.72rem;
+    font-size: 0.74rem;
   }
 
   .premium-footer-arabic {
-    font-size: 0.82rem;
-    line-height: 1.25;
+    font-size: 0.84rem;
+    line-height: 1.3;
   }
 }
 

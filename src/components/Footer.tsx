@@ -5,7 +5,7 @@ import React from 'react';
 export default function PremiumFooter() {
   return (
     <footer
-      className="premium-fixed-footer"
+      className="premium-page-footer"
       role="contentinfo"
       aria-label="Site Credits and Islamic Reminder"
     >
@@ -30,4 +30,3 @@ export default function PremiumFooter() {
     </footer>
   );
 }
-

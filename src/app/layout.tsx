@@ -47,15 +47,17 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <Suspense fallback={<div style={{ height: '68px', background: 'var(--bg-glass)' }} />}>
-            <Navbar />
-          </Suspense>
-          <main style={{ minHeight: 'calc(100vh - 68px)' }}>
-            <Suspense fallback={<div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading medical portal...</div>}>
-              {children}
+          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <Suspense fallback={<div style={{ height: '68px', background: 'var(--bg-glass)' }} />}>
+              <Navbar />
             </Suspense>
-          </main>
-          <PremiumFooter />
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <Suspense fallback={<div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading medical portal...</div>}>
+                {children}
+              </Suspense>
+            </main>
+            <PremiumFooter />
+          </div>
         </ThemeProvider>
       </body>
     </html>
