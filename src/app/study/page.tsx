@@ -172,50 +172,66 @@ export default function StudyHierarchyPage() {
   const activeConcept = concepts.find((c) => c.id === selectedConceptId);
 
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
+    <div className="container" style={{ padding: '2.5rem 1rem calc(95px + env(safe-area-inset-bottom, 20px))' }}>
+      {/* Mobile-responsive styles */}
+      <style>{`
+        @media (max-width: 640px) {
+          .study-header-h1 { font-size: 1.5rem !important; }
+          .study-filter-bar { flex-direction: column !important; align-items: stretch !important; gap: 0.75rem !important; }
+          .study-filter-bar .filter-label-row { justify-content: flex-start; }
+          .study-filter-select { width: 100% !important; min-width: 0 !important; }
+          .study-filter-item { flex-direction: column !important; align-items: stretch !important; gap: 0.3rem !important; }
+          .study-subject-pills { gap: 0.5rem !important; }
+          .study-subject-pill { font-size: 0.82rem !important; padding: 0.4rem 0.75rem !important; }
+          .study-main-grid { grid-template-columns: 1fr !important; }
+          .chapter-row { flex-wrap: wrap !important; gap: 0.4rem !important; }
+          .study-card-compact { padding: 1rem !important; }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38bdf8', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
           <BookOpen size={16} />
           <span>Curriculum Mastery</span>
         </div>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+        <h1 className="study-header-h1" style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.5rem' }}>
           Study by Subject, Chapter & Concept
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '750px', lineHeight: 1.6 }}>
-          Explore questions organized strictly by Academic Year → Module → Subject → Chapter → Concept. Drill broad medical disciplines or zoom in to individual pathophysiological mechanisms.
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', maxWidth: '750px', lineHeight: 1.6 }}>
+          Explore questions organized strictly by Academic Year → Module → Subject → Chapter → Concept.
         </p>
       </div>
 
       {/* Hierarchy Filter Bar: Academic Year & Module */}
       <div
-        className="card-3d"
+        className="card-3d study-filter-bar"
         style={{
-          padding: '1.25rem 1.5rem',
+          padding: '1rem 1.25rem',
           borderRadius: 'var(--radius-lg)',
-          marginBottom: '2rem',
+          marginBottom: '1.5rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '1.25rem',
+          gap: '1rem',
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
+        <div className="filter-label-row" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
           <Filter size={16} color="var(--cyan)" />
           <span>Hierarchy Filters:</span>
         </div>
 
         {/* Academic Year Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Academic Year:</span>
+        <div className="study-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Academic Year:</span>
           <select
             value={selectedYearId}
             onChange={(e) => {
               setSelectedYearId(e.target.value);
               setSelectedModuleId('all'); // Reset module on year change
             }}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select study-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Academic Years</option>
             {academicYears.map((year) => (
@@ -227,13 +243,13 @@ export default function StudyHierarchyPage() {
         </div>
 
         {/* Module Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Module:</span>
+        <div className="study-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Module:</span>
           <select
             value={selectedModuleId}
             onChange={(e) => setSelectedModuleId(e.target.value)}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select study-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Modules</option>
             {visibleModules.map((mod) => (
@@ -266,12 +282,14 @@ export default function StudyHierarchyPage() {
       {/* Step 1: Horizontal Subject Pills */}
       {visibleSubjects.length > 0 ? (
         <div
+          className="study-subject-pills"
           style={{
             display: 'flex',
             gap: '0.75rem',
             overflowX: 'auto',
             paddingBottom: '0.75rem',
-            marginBottom: '2rem',
+            marginBottom: '1.5rem',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {visibleSubjects.map((sub) => {
@@ -288,10 +306,11 @@ export default function StudyHierarchyPage() {
                   setSelectedChapterId('');
                   setSelectedConceptId('');
                 }}
-                className={`pill-3d pill-3d-teal ${isSelected ? 'active' : ''}`}
+                className={`pill-3d pill-3d-teal study-subject-pill ${isSelected ? 'active' : ''}`}
                 style={{
                   gap: '0.65rem',
                   fontSize: '0.95rem',
+                  flexShrink: 0,
                 }}
               >
                 <BookOpen size={16} color={isSelected ? 'var(--cyan)' : 'var(--text-dim)'} />
@@ -364,13 +383,13 @@ export default function StudyHierarchyPage() {
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1.5rem' }} className="study-main-grid">
           {/* Left Column: Chapters and Concepts Tree */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Active Subject Card */}
           {activeSubject && (
-            <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div className="card-3d study-card-compact" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <span className="badge badge-teal">
                   {activeSubject.code && !activeSubject.code.startsWith('SUB-') ? activeSubject.code : 'Subject'}
                 </span>
@@ -395,7 +414,7 @@ export default function StudyHierarchyPage() {
           )}
 
           {/* Chapters List */}
-          <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+          <div className="card-3d study-card-compact" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '1rem' }}>
               Chapters in this Subject ({currentChapters.length})
             </div>
@@ -420,6 +439,8 @@ export default function StudyHierarchyPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
                       transition: 'all 0.15s ease',
                     }}
                   >
@@ -453,7 +474,7 @@ export default function StudyHierarchyPage() {
 
           {/* Concepts List for Current Chapter */}
           {selectedChapterId && (
-            <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+            <div className="card-3d study-card-compact" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Sparkles size={14} color="#a855f7" />
                 <span>Target Concepts ({currentConcepts.length})</span>
@@ -481,6 +502,8 @@ export default function StudyHierarchyPage() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
                         }}
                       >
                         <div>

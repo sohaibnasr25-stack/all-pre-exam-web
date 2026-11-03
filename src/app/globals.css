@@ -1309,7 +1309,7 @@ dialog::backdrop {
 
   /* Add bottom padding to page so bottom nav doesn't overlap content */
   body {
-    padding-bottom: 72px;
+    padding-bottom: calc(85px + env(safe-area-inset-bottom, 16px));
   }
 
   /* Dashboard hero banner — stack vertically and compact */

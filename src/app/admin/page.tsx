@@ -3124,7 +3124,8 @@ C) Choice C"
                         })
                         .map((q) => {
                           const originalIdx = examQuestionsList.findIndex((item) => item.id === q.id);
-                          const correctChoice = q.answer_choices?.find((c) => c.is_correct);
+                          const correctChoices = q.answer_choices?.filter((c) => c.is_correct) || [];
+                          const correctLettersText = correctChoices.map((c) => c.choice_letter).join(' & ') || 'A';
                           const qSubject = subjects.find((s) => s.id === q.subject_id);
                           const qConcept = concepts.find((c) => c.id === q.concept_id);
                           const isExpanded = q.isExpanded !== false;
@@ -3188,7 +3189,7 @@ C) Choice C"
                                     className="badge badge-green"
                                     style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', fontWeight: 700 }}
                                   >
-                                    ✓ الإجابة الصحيحة: Choice {correctChoice?.choice_letter || 'A'}
+                                    ✓ الإجابة الصحيحة: Choice {correctLettersText}
                                   </span>
                                 </div>
 
@@ -3279,14 +3280,32 @@ C) Choice C"
                                         setExamQuestionsList((prev) =>
                                           prev.map((item, i) => {
                                             if (i !== originalIdx) return item;
+                                            const currentCorrectCount = item.answer_choices.filter((c) => c.is_correct).length;
+                                            const clickedChoice = item.answer_choices[cIdx];
+                                            // Toggle off if already correct (only if more than 1 is correct)
+                                            if (clickedChoice.is_correct) {
+                                              if (currentCorrectCount <= 1) return item;
+                                              const choicesCopy = item.answer_choices.map((c, ci) => ({
+                                                ...c,
+                                                is_correct: ci === cIdx ? false : c.is_correct,
+                                              }));
+                                              const explsCopy = item.explanations.map((exp, ei) => ({
+                                                ...exp,
+                                                is_why_correct: Boolean(choicesCopy[ei]?.is_correct),
+                                                is_why_incorrect: !choicesCopy[ei]?.is_correct,
+                                              }));
+                                              return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
+                                            }
+                                            // Toggle on (max 2 correct)
+                                            if (currentCorrectCount >= 2) return item;
                                             const choicesCopy = item.answer_choices.map((c, ci) => ({
                                               ...c,
-                                              is_correct: ci === cIdx,
+                                              is_correct: ci === cIdx ? true : c.is_correct,
                                             }));
                                             const explsCopy = item.explanations.map((exp, ei) => ({
                                               ...exp,
-                                              is_why_correct: ei === cIdx,
-                                              is_why_incorrect: ei !== cIdx,
+                                              is_why_correct: Boolean(choicesCopy[ei]?.is_correct),
+                                              is_why_incorrect: !choicesCopy[ei]?.is_correct,
                                             }));
                                             return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
                                           })
@@ -3515,26 +3534,43 @@ C) Choice C"
                                                 required
                                               />
 
-                                              {/* Radio button to mark this choice as the correct answer */}
+                                              {/* Checkbox to mark this choice as correct (supports up to 2 correct answers) */}
                                               <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', whiteSpace: 'nowrap', padding: '0.3rem 0.6rem', borderRadius: '4px', background: choice.is_correct ? 'rgba(16, 185, 129, 0.15)' : 'transparent' }}>
                                                 <input
-                                                  type="radio"
-                                                  name={`correct_choice_radio_${q.id}`}
+                                                  type="checkbox"
                                                   checked={choice.is_correct}
                                                   onChange={() => {
                                                     setExamQuestionsList((prev) =>
                                                       prev.map((item, i) => {
                                                         if (i !== originalIdx) return item;
-                                                        const choicesCopy = item.answer_choices.map((c, ci) => ({
-                                                          ...c,
-                                                          is_correct: ci === cIdx,
-                                                        }));
-                                                        const explsCopy = item.explanations.map((exp, ei) => ({
-                                                          ...exp,
-                                                          is_why_correct: ei === cIdx,
-                                                          is_why_incorrect: ei !== cIdx,
-                                                        }));
-                                                        return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
+                                                        const currentCorrectCount = item.answer_choices.filter((c) => c.is_correct).length;
+                                                        // If currently correct → uncheck (always allowed, but must keep ≥1 correct)
+                                                        if (choice.is_correct) {
+                                                          if (currentCorrectCount <= 1) return item; // Don't allow 0 correct
+                                                          const choicesCopy = item.answer_choices.map((c, ci) => ({
+                                                            ...c,
+                                                            is_correct: ci === cIdx ? false : c.is_correct,
+                                                          }));
+                                                          const explsCopy = item.explanations.map((exp, ei) => ({
+                                                            ...exp,
+                                                            is_why_correct: Boolean(choicesCopy[ei]?.is_correct),
+                                                            is_why_incorrect: !choicesCopy[ei]?.is_correct,
+                                                          }));
+                                                          return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
+                                                        } else {
+                                                          // If not currently correct → check (only if ≤1 correct so far)
+                                                          if (currentCorrectCount >= 2) return item; // Max 2 correct
+                                                          const choicesCopy = item.answer_choices.map((c, ci) => ({
+                                                            ...c,
+                                                            is_correct: ci === cIdx ? true : c.is_correct,
+                                                          }));
+                                                          const explsCopy = item.explanations.map((exp, ei) => ({
+                                                            ...exp,
+                                                            is_why_correct: Boolean(choicesCopy[ei]?.is_correct),
+                                                            is_why_incorrect: !choicesCopy[ei]?.is_correct,
+                                                          }));
+                                                          return { ...item, answer_choices: choicesCopy, explanations: explsCopy };
+                                                        }
                                                       })
                                                     );
                                                   }}
@@ -4165,26 +4201,43 @@ C) Choice C"
                             required
                           />
 
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap', padding: '0.3rem 0.6rem', borderRadius: '4px', background: choice.is_correct ? 'rgba(16, 185, 129, 0.15)' : 'transparent' }}>
                             <input
-                              type="radio"
-                              name="correctChoiceRadio"
+                              type="checkbox"
                               checked={choice.is_correct}
                               onChange={() => {
-                                const newChoices = qForm.answer_choices.map((c, i) => ({
-                                  ...c,
-                                  is_correct: i === idx,
-                                }));
-                                const newExpls = qForm.explanations.map((e, i) => ({
-                                  ...e,
-                                  is_why_correct: i === idx,
-                                  is_why_incorrect: i !== idx,
-                                }));
-                                setQForm({ ...qForm, answer_choices: newChoices, explanations: newExpls });
+                                const currentCorrectCount = qForm.answer_choices.filter((c) => c.is_correct).length;
+                                if (choice.is_correct) {
+                                  // Must keep at least 1 correct answer
+                                  if (currentCorrectCount <= 1) return;
+                                  const newChoices = qForm.answer_choices.map((c, i) => ({
+                                    ...c,
+                                    is_correct: i === idx ? false : c.is_correct,
+                                  }));
+                                  const newExpls = qForm.explanations.map((e, i) => ({
+                                    ...e,
+                                    is_why_correct: Boolean(newChoices[i]?.is_correct),
+                                    is_why_incorrect: !newChoices[i]?.is_correct,
+                                  }));
+                                  setQForm({ ...qForm, answer_choices: newChoices, explanations: newExpls });
+                                } else {
+                                  // Maximum 2 correct answers allowed
+                                  if (currentCorrectCount >= 2) return;
+                                  const newChoices = qForm.answer_choices.map((c, i) => ({
+                                    ...c,
+                                    is_correct: i === idx ? true : c.is_correct,
+                                  }));
+                                  const newExpls = qForm.explanations.map((e, i) => ({
+                                    ...e,
+                                    is_why_correct: Boolean(newChoices[i]?.is_correct),
+                                    is_why_incorrect: !newChoices[i]?.is_correct,
+                                  }));
+                                  setQForm({ ...qForm, answer_choices: newChoices, explanations: newExpls });
+                                }
                               }}
                             />
                             <span style={{ color: choice.is_correct ? '#34d399' : 'var(--text-muted)', fontWeight: 600 }}>
-                              Correct Answer
+                              {choice.is_correct ? 'Correct Answer ✓' : 'Mark as Correct'}
                             </span>
                           </label>
                         </div>

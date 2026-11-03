@@ -132,9 +132,19 @@ export default function RepeatedConceptsPage() {
   };
 
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
+    <div className="container" style={{ padding: '2.5rem 1rem 5rem' }}>
+      {/* Mobile responsive styles */}
+      <style>{`
+        @media (max-width: 640px) {
+          .repeated-header h1 { font-size: 1.5rem !important; }
+          .repeated-filter-bar { flex-direction: column !important; align-items: stretch !important; gap: 0.75rem !important; }
+          .repeated-filter-item { flex-direction: column !important; align-items: stretch !important; gap: 0.3rem !important; }
+          .repeated-filter-select { width: 100% !important; }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
+      <div className="repeated-header" style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c084fc', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
           <Sparkles size={16} />
           <span>High-Yield Cross-Exam Analysis</span>
@@ -150,14 +160,14 @@ export default function RepeatedConceptsPage() {
 
       {/* Hierarchy Filter Bar: Academic Year -> Module -> Subject */}
       <div
-        className="card-3d"
+        className="card-3d repeated-filter-bar"
         style={{
-          padding: '1.25rem 1.5rem',
+          padding: '1rem 1.25rem',
           borderRadius: 'var(--radius-lg)',
           marginBottom: '2rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '1.25rem',
+          gap: '1rem',
           flexWrap: 'wrap',
         }}
       >
@@ -167,8 +177,8 @@ export default function RepeatedConceptsPage() {
         </div>
 
         {/* Academic Year Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Academic Year:</span>
+        <div className="repeated-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Academic Year:</span>
           <select
             value={selectedYearId}
             onChange={(e) => {
@@ -176,8 +186,8 @@ export default function RepeatedConceptsPage() {
               setSelectedModuleId('all');
               setSelectedSubjectId('all');
             }}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select repeated-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Academic Years</option>
             {academicYears.map((year) => (
@@ -189,16 +199,16 @@ export default function RepeatedConceptsPage() {
         </div>
 
         {/* Module Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Module:</span>
+        <div className="repeated-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Module:</span>
           <select
             value={selectedModuleId}
             onChange={(e) => {
               setSelectedModuleId(e.target.value);
               setSelectedSubjectId('all');
             }}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select repeated-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Modules</option>
             {visibleModules.map((mod) => (
@@ -210,13 +220,13 @@ export default function RepeatedConceptsPage() {
         </div>
 
         {/* Subject Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Subject:</span>
+        <div className="repeated-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '150px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Subject:</span>
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select repeated-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Subjects</option>
             {visibleSubjects.map((sub) => (

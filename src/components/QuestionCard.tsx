@@ -118,8 +118,10 @@ export default function QuestionCard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isAnswerLocked, question.answer_choices, onSelectChoice]);
 
-  // Correct choice
-  const correctChoice = question.answer_choices.find((c) => c.is_correct);
+  // Correct choices (supports multiple correct answers)
+  const correctChoices = question.answer_choices.filter((c) => c.is_correct);
+  const correctChoice = correctChoices[0];
+  const correctLettersText = correctChoices.map((c) => c.choice_letter).join(' & ') || 'A';
   const selectedChoice = question.answer_choices.find((c) => c.id === selectedChoiceId);
   const isUserCorrect = selectedChoice?.is_correct ?? false;
 
@@ -642,7 +644,7 @@ export default function QuestionCard({
                         Why Incorrect:
                       </strong>
                       <span>
-                        Choice {choice.choice_letter} ({choice.choice_text}) is incorrect. The verified correct answer is Choice {correctChoiceObj?.choice_letter || ''} {correctChoiceObj?.choice_text ? `(${correctChoiceObj.choice_text})` : ''}.
+                        Choice {choice.choice_letter} ({choice.choice_text}) is incorrect. The verified correct answer is Choice {correctLettersText}.
                       </span>
                       {mainExplanation?.explanation_text && (
                         <div style={{ marginTop: '0.45rem', color: 'var(--text-muted)', fontSize: '0.83rem' }}>
@@ -725,14 +727,14 @@ export default function QuestionCard({
                 <>
                   <CheckCircle2 size={20} color="#10b981" />
                   <span style={{ fontWeight: 700, color: '#34d399', fontSize: '1.05rem' }}>
-                    Correct Answer! Choice {correctChoice?.choice_letter}
+                    Correct Answer! Choice {correctLettersText}
                   </span>
                 </>
               ) : (
                 <>
                   <AlertCircle size={20} color="#fb7185" />
                   <span style={{ fontWeight: 700, color: '#fb7185', fontSize: '1.05rem' }}>
-                    {selectedChoiceId ? 'Incorrect.' : 'Unanswered.'} Correct Answer: Choice {correctChoice?.choice_letter}
+                    {selectedChoiceId ? 'Incorrect.' : 'Unanswered.'} Correct Answer: Choice {correctLettersText}
                   </span>
                 </>
               )}

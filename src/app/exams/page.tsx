@@ -98,9 +98,19 @@ export default function CompleteExamsPage() {
   });
 
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
+    <div className="container" style={{ padding: '2.5rem 1rem 5rem' }}>
+      {/* Mobile responsive styles */}
+      <style>{`
+        @media (max-width: 640px) {
+          .exams-header h1 { font-size: 1.5rem !important; }
+          .exams-filter-bar { flex-direction: column !important; align-items: stretch !important; gap: 0.75rem !important; }
+          .exams-filter-item { flex-direction: column !important; align-items: stretch !important; gap: 0.3rem !important; }
+          .exams-filter-select { width: 100% !important; }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div className="exams-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38bdf8', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
             <FileCheck2 size={16} />
@@ -138,14 +148,14 @@ export default function CompleteExamsPage() {
 
       {/* Hierarchy Filter Bar with 3D Floating Effect */}
       <div
-        className="card-3d"
+        className="card-3d exams-filter-bar"
         style={{
-          padding: '1.25rem 1.5rem',
+          padding: '1rem 1.25rem',
           borderRadius: 'var(--radius-lg)',
           marginBottom: '2rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '1.25rem',
+          gap: '1rem',
           flexWrap: 'wrap',
         }}
       >
@@ -155,16 +165,16 @@ export default function CompleteExamsPage() {
         </div>
 
         {/* Academic Year Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Academic Year:</span>
+        <div className="exams-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '160px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Academic Year:</span>
           <select
             value={selectedYearId}
             onChange={(e) => {
               setSelectedYearId(e.target.value);
               setSelectedModuleId('all'); // Reset module on year change
             }}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select exams-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Academic Years</option>
             {academicYears.map((year) => (
@@ -176,13 +186,13 @@ export default function CompleteExamsPage() {
         </div>
 
         {/* Module Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Module:</span>
+        <div className="exams-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '160px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Module:</span>
           <select
             value={selectedModuleId}
             onChange={(e) => setSelectedModuleId(e.target.value)}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select exams-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Modules</option>
             {visibleModules.map((mod) => (
@@ -194,13 +204,13 @@ export default function CompleteExamsPage() {
         </div>
 
         {/* Exam Type Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Type:</span>
+        <div className="exams-filter-item" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '120px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Type:</span>
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="form-select"
-            style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.88rem' }}
+            className="form-select exams-filter-select"
+            style={{ width: '100%', padding: '0.45rem 0.75rem', fontSize: '0.88rem' }}
           >
             <option value="all">All Types</option>
             <option value="end_module">END MODULE</option>
