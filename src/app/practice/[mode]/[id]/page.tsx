@@ -1403,7 +1403,7 @@ function PracticeInner({ params }: PracticePageProps) {
             justify-content: space-between;
             gap: 0.5rem;
             position: fixed;
-            bottom: 0;
+            bottom: var(--fixed-footer-height-mobile, 46px);
             left: 0;
             right: 0;
             z-index: 45;

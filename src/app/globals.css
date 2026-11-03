@@ -1,6 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@500;700&display=swap');
+
 :root {
   color-scheme: dark;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fixed-footer-height: 38px;
+  --fixed-footer-height-mobile: 44px;
   
   /* Dark Theme Palette (Default) */
   --bg-base: #080d1a;
@@ -1302,14 +1306,15 @@ dialog::backdrop {
 }
 
 @media (max-width: 990px) {
-  /* Show bottom nav on mobile/tablet */
+  /* Show bottom nav on mobile/tablet positioned directly above fixed footer */
   .mobile-bottom-nav {
     display: flex;
+    bottom: var(--fixed-footer-height-mobile, 44px);
   }
 
-  /* Add bottom padding to page so bottom nav doesn't overlap content */
+  /* Add bottom padding to page so bottom nav and footer don't overlap content */
   body {
-    padding-bottom: calc(85px + env(safe-area-inset-bottom, 16px));
+    padding-bottom: calc(var(--fixed-footer-height-mobile, 44px) + 85px + env(safe-area-inset-bottom, 16px));
   }
 
   /* Dashboard hero banner — stack vertically and compact */
@@ -1387,6 +1392,209 @@ dialog::backdrop {
   /* Curriculum card rows: compact */
   .hero-curriculum-card [style*="font-size: 0.92rem"] {
     font-size: 0.82rem !important;
+  }
+}
+
+/* ==========================================================
+   PREMIUM FIXED FOOTER - Luxurious Navy & Metallic Gold
+   ========================================================== */
+
+@media (min-width: 991px) {
+  body {
+    padding-bottom: calc(var(--fixed-footer-height, 38px) + 20px);
+  }
+}
+
+.premium-fixed-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 48;
+  height: var(--fixed-footer-height, 38px);
+  background: linear-gradient(180deg, #090e1b 0%, #050811 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(212, 175, 55, 0.38);
+  box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.55), 0 -1px 3px rgba(212, 175, 55, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  pointer-events: auto;
+  transition: all 0.25s ease;
+}
+
+[data-theme="light"] .premium-fixed-footer {
+  /* Preserves luxurious dark navy aesthetic in all themes as requested */
+  background: linear-gradient(180deg, #090e1b 0%, #050811 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3), 0 -1px 3px rgba(212, 175, 55, 0.22);
+}
+
+/* Subtle Golden Top Glow Line with Soft Shimmer */
+.premium-footer-gold-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.3) 15%,
+    rgba(255, 215, 0, 0.9) 50%,
+    rgba(212, 175, 55, 0.3) 85%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.45);
+  animation: subtleGoldPulse 4.5s ease-in-out infinite;
+}
+
+@keyframes subtleGoldPulse {
+  0%, 100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.premium-footer-container {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+/* English Developer Credit (LTR) */
+.premium-footer-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.premium-footer-label {
+  color: #f1f5f9;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.92;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.premium-footer-author {
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.07em;
+  background: linear-gradient(135deg, #fff3c4 0%, #ffd700 30%, #d4af37 70%, #b8860b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #d4af37;
+  text-shadow: 0 0 14px rgba(212, 175, 55, 0.32);
+  transition: filter 0.25s ease;
+}
+
+.premium-footer-author:hover {
+  filter: brightness(1.15) drop-shadow(0 0 6px rgba(245, 212, 133, 0.55));
+}
+
+/* Decorative Golden Star Divider */
+.premium-footer-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(212, 175, 55, 0.65);
+  font-size: 0.65rem;
+  text-shadow: 0 0 6px rgba(212, 175, 55, 0.4);
+}
+
+/* Religious Arabic Reminder (RTL) */
+.premium-footer-arabic {
+  font-family: 'Amiri', 'Cairo', 'Traditional Arabic', 'Scheherazade New', serif;
+  font-size: 0.96rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f5d485;
+  text-shadow: 0 0 12px rgba(245, 212, 133, 0.35);
+  white-space: nowrap;
+  transition: all 0.25s ease;
+}
+
+.premium-footer-arabic:hover {
+  color: #fff2cc;
+  text-shadow: 0 0 16px rgba(255, 242, 204, 0.65);
+}
+
+/* Responsive Footer Adaptations */
+@media (max-width: 768px) {
+  .premium-fixed-footer {
+    height: var(--fixed-footer-height-mobile, 44px);
+  }
+
+  .premium-footer-container {
+    padding: 0 0.85rem;
+    justify-content: center;
+    gap: 0.65rem;
+  }
+
+  .premium-footer-label {
+    font-size: 0.7rem;
+  }
+
+  .premium-footer-author {
+    font-size: 0.76rem;
+  }
+
+  .premium-footer-arabic {
+    font-size: 0.88rem;
+  }
+
+  .premium-footer-divider {
+    font-size: 0.55rem;
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --fixed-footer-height-mobile: 46px;
+  }
+
+  .premium-fixed-footer {
+    height: var(--fixed-footer-height-mobile, 46px);
+  }
+
+  .premium-footer-container {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .premium-footer-divider {
+    display: none;
+  }
+
+  .premium-footer-label {
+    font-size: 0.66rem;
+  }
+
+  .premium-footer-author {
+    font-size: 0.72rem;
+  }
+
+  .premium-footer-arabic {
+    font-size: 0.82rem;
+    line-height: 1.25;
   }
 }
 

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import PremiumFooter from '@/components/Footer';
 import { ThemeProvider } from '@/components/ThemeContext';
 
 export const metadata: Metadata = {
@@ -54,6 +55,7 @@ export default function RootLayout({
               {children}
             </Suspense>
           </main>
+          <PremiumFooter />
         </ThemeProvider>
       </body>
     </html>
