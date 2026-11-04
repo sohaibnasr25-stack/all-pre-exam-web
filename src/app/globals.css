@@ -872,6 +872,14 @@ dialog {
   width: 90%;
   margin: auto;
   box-shadow: var(--shadow-lg), 0 0 50px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  dialog {
+    padding: 1.35rem 1rem !important;
+    width: 94% !important;
+  }
 }
 
 dialog::backdrop {

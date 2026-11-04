@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 
 interface UnansweredWarningDialogProps {
   isOpen: boolean;
@@ -78,49 +78,105 @@ export default function UnansweredWarningDialog({
   return (
     <dialog
       ref={dialogRef}
+      className="unanswered-warning-dialog"
       closedby="any"
       aria-labelledby="unansweredWarningTitle"
-      style={{
-        maxWidth: '520px',
-        width: '90%',
-        padding: '2rem',
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--warning-border)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(245, 158, 11, 0.15)',
-      }}
     >
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+      <style>{`
+        .unanswered-warning-dialog {
+          max-width: 500px;
+          width: 92%;
+          padding: 1.75rem 2rem;
+          background: var(--bg-surface);
+          border: 1px solid var(--warning-border);
+          border-radius: var(--radius-xl);
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 35px rgba(245, 158, 11, 0.15);
+          box-sizing: border-box;
+          margin: auto;
+        }
+
+        .unanswered-dialog-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .unanswered-dialog-btn {
+          flex: 1;
+          min-width: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.65rem 0.85rem;
+          font-size: 0.88rem;
+          font-weight: 600;
+          border-radius: var(--radius-md);
+          white-space: nowrap;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 480px) {
+          .unanswered-warning-dialog {
+            width: 94% !important;
+            padding: 1.35rem 1rem !important;
+            border-radius: var(--radius-lg) !important;
+          }
+
+          .unanswered-dialog-actions {
+            gap: 0.5rem !important;
+          }
+
+          .unanswered-dialog-btn {
+            padding: 0.62rem 0.45rem !important;
+            font-size: 0.82rem !important;
+            gap: 0.35rem !important;
+          }
+        }
+
+        @media (max-width: 330px) {
+          .unanswered-dialog-actions {
+            flex-direction: column-reverse !important;
+            gap: 0.5rem !important;
+          }
+          .unanswered-dialog-btn {
+            width: 100% !important;
+          }
+        }
+      `}</style>
+
+      <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
         <div
           style={{
-            width: '56px',
-            height: '56px',
+            width: '52px',
+            height: '52px',
             borderRadius: '50%',
             background: 'var(--warning-bg)',
             border: '1px solid var(--warning-border)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '1rem',
+            marginBottom: '0.85rem',
           }}
         >
-          <AlertTriangle size={28} color="#f59e0b" />
+          <AlertTriangle size={26} color="#f59e0b" />
         </div>
-        <h3 id="unansweredWarningTitle" style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+        <h3 id="unansweredWarningTitle" style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-main)' }}>
           Unanswered Questions Remaining
         </h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: 1.5 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
           You have answered <strong>{totalQuestions - unansweredCount}</strong> of <strong>{totalQuestions}</strong> questions.
           There {unansweredCount === 1 ? 'is' : 'are'} still <strong>{unansweredCount}</strong> unanswered {unansweredCount === 1 ? 'question' : 'questions'}.
         </p>
       </div>
 
       {unansweredIndices.length > 0 && (
-        <div style={{ marginBottom: '1.5rem', background: 'var(--bg-surface-elevated)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+        <div style={{ marginBottom: '1.25rem', background: 'var(--bg-surface-elevated)', padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', boxSizing: 'border-box' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-dim)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
             Jump to unanswered:
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '100px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxHeight: '110px', overflowY: 'auto' }}>
             {unansweredIndices.map((qIdx) => (
               <button
                 key={qIdx}
@@ -140,6 +196,8 @@ export default function UnansweredWarningDialog({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
                 }}
               >
                 {qIdx + 1}
@@ -149,25 +207,24 @@ export default function UnansweredWarningDialog({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+      <div className="unanswered-dialog-actions">
         <button
           onClick={onCancel}
-          className="btn btn-secondary"
-          style={{ flex: 1 }}
+          className="btn btn-secondary unanswered-dialog-btn"
         >
           Return to Exam
         </button>
         <button
           onClick={onConfirmSubmit}
-          className="btn btn-primary"
+          className="btn btn-primary unanswered-dialog-btn"
           style={{
-            flex: 1,
             background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
             boxShadow: '0 4px 14px rgba(245, 158, 11, 0.35)',
+            color: '#ffffff',
           }}
         >
           <span>Submit Anyway</span>
-          <ArrowRight size={16} />
+          <ArrowRight size={15} style={{ flexShrink: 0 }} />
         </button>
       </div>
     </dialog>
