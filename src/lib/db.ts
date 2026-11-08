@@ -67,6 +67,35 @@ export async function safeSupabaseCall<T>(call: () => Promise<T>, timeoutMs = 25
   }
 }
 
+/**
+ * Automatically paginates Supabase queries in chunks of pageSize (default 1000),
+ * bypassing PostgREST's default 1000-row limit to retrieve ALL rows reliably.
+ */
+export async function fetchAllSupabaseRows<T = any>(
+  table: string,
+  select = '*',
+  filterModifier?: (query: any) => any,
+  pageSize = 1000
+): Promise<T[]> {
+  if (!supabase) return [];
+  const results: T[] = [];
+  let from = 0;
+  while (true) {
+    let q = supabase.from(table).select(select).range(from, from + pageSize - 1);
+    if (filterModifier) q = filterModifier(q);
+    const { data, error } = await q;
+    if (error) {
+      console.error(`[fetchAllSupabaseRows] Error fetching from ${table}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    results.push(...(data as T[]));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return results;
+}
+
 // In-memory store cache for serverless environments (prevents EROFS read-only crashes on Vercel)
 let inMemoryStore: DatabaseStore | null = null;
 
@@ -258,11 +287,23 @@ export async function updateAcademicYear(id: string, updates: Partial<AcademicYe
 
 export async function deleteAcademicYear(id: string): Promise<boolean> {
   const store = readLocalStore();
-  store.academic_years = store.academic_years.filter((y) => y.id !== id);
-  writeLocalStore(store);
+  const modulesInYear = store.modules.filter((m) => m.academic_year_id === id);
+  for (const mod of modulesInYear) {
+    await deleteModule(mod.id);
+  }
+
+  const updatedStore = readLocalStore();
+  updatedStore.academic_years = updatedStore.academic_years.filter((y) => y.id !== id);
+  writeLocalStore(updatedStore);
 
   if (supabase) {
     try {
+      const { data: supaMods } = await supabase.from('modules').select('id').eq('academic_year_id', id);
+      if (supaMods) {
+        for (const mod of supaMods) {
+          await deleteModule(mod.id);
+        }
+      }
       const { error } = await supabase.from('academic_years').delete().eq('id', id);
       if (error) console.error('Error deleting academic year from Supabase:', error);
     } catch (e) {
@@ -329,18 +370,111 @@ export async function updateModule(id: string, updates: Partial<Module>): Promis
 
 export async function deleteModule(id: string): Promise<boolean> {
   const store = readLocalStore();
-  store.modules = store.modules.filter((m) => m.id !== id);
-  writeLocalStore(store);
+
+  // 1. Identify all exams belonging to this module
+  const moduleExamIds = store.exams.filter((e) => e.module_id === id).map((e) => e.id);
+
+  // 2. Identify all questions belonging to this module OR linked to its exams
+  const localLinkedQIds = new Set(
+    store.exam_questions.filter((eq) => moduleExamIds.includes(eq.exam_id)).map((eq) => eq.question_id)
+  );
+  store.questions.forEach((q) => {
+    if (q.module_id === id) localLinkedQIds.add(q.id);
+  });
+
+  let allQIdsToDelete = Array.from(localLinkedQIds);
 
   if (supabase) {
     try {
+      // Find all exams belonging to this module in Supabase
+      const { data: supaExams } = await supabase.from('exams').select('id').eq('module_id', id);
+      const allModExamIds = Array.from(new Set([...moduleExamIds, ...(supaExams || []).map((e) => e.id)]));
+
+      // Find all questions belonging to this module in Supabase (with pagination)
+      const supaQs = await fetchAllSupabaseRows<{ id: string }>('questions', 'id', (q) => q.eq('module_id', id));
+      supaQs.forEach((q) => {
+        if (!allQIdsToDelete.includes(q.id)) allQIdsToDelete.push(q.id);
+      });
+
+      // Find all exam_questions for this module's exams
+      if (allModExamIds.length > 0) {
+        const chunkSize = 100;
+        for (let i = 0; i < allModExamIds.length; i += chunkSize) {
+          const chunk = allModExamIds.slice(i, i + chunkSize);
+          const { data: supaEq } = await supabase.from('exam_questions').select('question_id').in('exam_id', chunk);
+          if (supaEq) {
+            supaEq.forEach((eq) => {
+              if (!allQIdsToDelete.includes(eq.question_id)) allQIdsToDelete.push(eq.question_id);
+            });
+          }
+        }
+      }
+
+      // Delete questions and all their related children in safe chunks of 100
+      const chunkSize = 100;
+      for (let i = 0; i < allQIdsToDelete.length; i += chunkSize) {
+        const chunk = allQIdsToDelete.slice(i, i + chunkSize);
+        await supabase.from('answer_choices').delete().in('question_id', chunk);
+        await supabase.from('explanations').delete().in('question_id', chunk);
+        await supabase.from('bookmarks').delete().in('question_id', chunk);
+        await supabase.from('exam_questions').delete().in('question_id', chunk);
+        await supabase.from('questions').delete().in('id', chunk);
+      }
+
+      // Delete exam_questions and exams
+      if (allModExamIds.length > 0) {
+        for (let i = 0; i < allModExamIds.length; i += chunkSize) {
+          const chunk = allModExamIds.slice(i, i + chunkSize);
+          await supabase.from('exam_questions').delete().in('exam_id', chunk);
+          await supabase.from('exams').delete().in('id', chunk);
+        }
+      }
+
+      // Find subjects, chapters, concepts of this module
+      const { data: supaSubs } = await supabase.from('subjects').select('id').eq('module_id', id);
+      const subIds = (supaSubs || []).map((s) => s.id);
+      if (subIds.length > 0) {
+        for (let i = 0; i < subIds.length; i += chunkSize) {
+          const chunkSub = subIds.slice(i, i + chunkSize);
+          const { data: supaChaps } = await supabase.from('chapters').select('id').in('subject_id', chunkSub);
+          const chapIds = (supaChaps || []).map((c) => c.id);
+          if (chapIds.length > 0) {
+            for (let j = 0; j < chapIds.length; j += chunkSize) {
+              const chunkChap = chapIds.slice(j, j + chunkSize);
+              await supabase.from('concepts').delete().in('chapter_id', chunkChap);
+              await supabase.from('chapters').delete().in('id', chunkChap);
+            }
+          }
+          await supabase.from('subjects').delete().in('id', chunkSub);
+        }
+      }
+
+      // Finally delete module from Supabase
       const { error } = await supabase.from('modules').delete().eq('id', id);
       if (error) console.error('Error deleting module from Supabase:', error);
     } catch (e) {
-      console.warn('Error deleting module from Supabase:', e);
+      console.warn('Error in cascade deleteModule from Supabase:', e);
     }
   }
 
+  // Remove everything from local store
+  const qSet = new Set(allQIdsToDelete);
+  const examSet = new Set(moduleExamIds);
+  const subSet = new Set(store.subjects.filter((s) => s.module_id === id).map((s) => s.id));
+  const chapSet = new Set(store.chapters.filter((c) => subSet.has(c.subject_id)).map((c) => c.id));
+
+  store.modules = store.modules.filter((m) => m.id !== id);
+  store.exams = store.exams.filter((e) => !examSet.has(e.id) && e.module_id !== id);
+  store.exam_questions = store.exam_questions.filter((eq) => !examSet.has(eq.exam_id) && !qSet.has(eq.question_id));
+  store.questions = store.questions.filter((q) => !qSet.has(q.id) && q.module_id !== id);
+  store.answer_choices = store.answer_choices.filter((c) => !qSet.has(c.question_id));
+  store.explanations = store.explanations.filter((e) => !qSet.has(e.question_id));
+  store.bookmarks = store.bookmarks.filter((b) => !qSet.has(b.question_id));
+  store.subjects = store.subjects.filter((s) => !subSet.has(s.id) && s.module_id !== id);
+  store.chapters = store.chapters.filter((c) => !chapSet.has(c.id));
+  store.concepts = store.concepts.filter((co) => !chapSet.has(co.chapter_id));
+
+  writeLocalStore(store);
   return true;
 }
 
@@ -793,12 +927,10 @@ export async function deleteExam(id: string, deleteAssociatedQuestions: boolean 
 
   if (supabase) {
     try {
-      const { data: supaEq } = await supabase.from('exam_questions').select('question_id').eq('exam_id', id);
-      if (supaEq) {
-        supaEq.forEach((r) => {
-          if (!allLinkedQIds.includes(r.question_id)) allLinkedQIds.push(r.question_id);
-        });
-      }
+      const supaEq = await fetchAllSupabaseRows<{ question_id: string }>('exam_questions', 'question_id', (q) => q.eq('exam_id', id));
+      supaEq.forEach((r) => {
+        if (!allLinkedQIds.includes(r.question_id)) allLinkedQIds.push(r.question_id);
+      });
     } catch (err) {
       console.warn('Error fetching exam_questions in deleteExam:', err);
     }
@@ -814,13 +946,17 @@ export async function deleteExam(id: string, deleteAssociatedQuestions: boolean 
     let supaOtherQIds = new Set<string>();
     if (supabase) {
       try {
-        const { data: otherEq } = await supabase
-          .from('exam_questions')
-          .select('question_id')
-          .neq('exam_id', id)
-          .in('question_id', allLinkedQIds);
-        if (otherEq) {
-          otherEq.forEach((r) => supaOtherQIds.add(r.question_id));
+        const chunkSize = 100;
+        for (let i = 0; i < allLinkedQIds.length; i += chunkSize) {
+          const chunk = allLinkedQIds.slice(i, i + chunkSize);
+          const { data: otherEq } = await supabase
+            .from('exam_questions')
+            .select('question_id')
+            .neq('exam_id', id)
+            .in('question_id', chunk);
+          if (otherEq) {
+            otherEq.forEach((r) => supaOtherQIds.add(r.question_id));
+          }
         }
       } catch (err) {
         console.warn('Error querying other exams for questions:', err);
@@ -851,11 +987,15 @@ export async function deleteExam(id: string, deleteAssociatedQuestions: boolean 
   if (supabase) {
     try {
       if (questionsToDelete.length > 0) {
-        await supabase.from('answer_choices').delete().in('question_id', questionsToDelete);
-        await supabase.from('explanations').delete().in('question_id', questionsToDelete);
-        await supabase.from('bookmarks').delete().in('question_id', questionsToDelete);
-        await supabase.from('exam_questions').delete().in('question_id', questionsToDelete);
-        await supabase.from('questions').delete().in('id', questionsToDelete);
+        const chunkSize = 100;
+        for (let i = 0; i < questionsToDelete.length; i += chunkSize) {
+          const chunk = questionsToDelete.slice(i, i + chunkSize);
+          await supabase.from('answer_choices').delete().in('question_id', chunk);
+          await supabase.from('explanations').delete().in('question_id', chunk);
+          await supabase.from('bookmarks').delete().in('question_id', chunk);
+          await supabase.from('exam_questions').delete().in('question_id', chunk);
+          await supabase.from('questions').delete().in('id', chunk);
+        }
       }
       await supabase.from('exam_questions').delete().eq('exam_id', id);
       await supabase.from('exams').delete().eq('id', id);
@@ -868,27 +1008,42 @@ export async function deleteExam(id: string, deleteAssociatedQuestions: boolean 
 }
 
 /**
- * Utility to clean up any orphan questions not attached to ANY exam
+ * Utility to clean up any orphan questions not attached to ANY exam or with null/invalid module_id
  */
 export async function cleanOrphanQuestions(): Promise<{ deleted_count: number }> {
   const store = readLocalStore();
   const linkedQIdsLocal = new Set(store.exam_questions.map((eq) => eq.question_id));
-  let orphanIds = store.questions.filter((q) => !linkedQIdsLocal.has(q.id)).map((q) => q.id);
+  const validModIdsLocal = new Set(store.modules.map((m) => m.id));
+
+  let orphanIds = store.questions
+    .filter((q) => !linkedQIdsLocal.has(q.id) || !q.module_id || !validModIdsLocal.has(q.module_id))
+    .map((q) => q.id);
 
   if (supabase) {
     try {
-      const { data: qs } = await supabase.from('questions').select('id');
-      const { data: eq } = await supabase.from('exam_questions').select('question_id');
-      const eqSet = new Set((eq || []).map((x) => x.question_id));
-      const supaOrphans = (qs || []).filter((q) => !eqSet.has(q.id)).map((q) => q.id);
+      const allQs = await fetchAllSupabaseRows<{ id: string; module_id: string | null }>('questions', 'id, module_id');
+      const allEqs = await fetchAllSupabaseRows<{ question_id: string }>('exam_questions', 'question_id');
+      const allMods = await fetchAllSupabaseRows<{ id: string }>('modules', 'id');
+
+      const eqSet = new Set(allEqs.map((x) => x.question_id));
+      const modSet = new Set(allMods.map((m) => m.id));
+
+      const supaOrphans = allQs
+        .filter((q) => !eqSet.has(q.id) || !q.module_id || !modSet.has(q.module_id))
+        .map((q) => q.id);
+
       orphanIds = Array.from(new Set([...orphanIds, ...supaOrphans]));
 
       if (orphanIds.length > 0) {
-        await supabase.from('answer_choices').delete().in('question_id', orphanIds);
-        await supabase.from('explanations').delete().in('question_id', orphanIds);
-        await supabase.from('bookmarks').delete().in('question_id', orphanIds);
-        await supabase.from('exam_questions').delete().in('question_id', orphanIds);
-        await supabase.from('questions').delete().in('id', orphanIds);
+        const chunkSize = 100;
+        for (let i = 0; i < orphanIds.length; i += chunkSize) {
+          const chunk = orphanIds.slice(i, i + chunkSize);
+          await supabase.from('answer_choices').delete().in('question_id', chunk);
+          await supabase.from('explanations').delete().in('question_id', chunk);
+          await supabase.from('bookmarks').delete().in('question_id', chunk);
+          await supabase.from('exam_questions').delete().in('question_id', chunk);
+          await supabase.from('questions').delete().in('id', chunk);
+        }
       }
     } catch (err) {
       console.error('Error cleaning orphan questions in Supabase:', err);
@@ -939,9 +1094,26 @@ export async function getQuestions(filters?: {
       if (filters?.concept_id) query = query.eq('concept_id', filters.concept_id);
       if (filters?.difficulty) query = query.eq('difficulty', filters.difficulty);
 
-      const { data, error } = await query.order('order_index', { ascending: true });
-      if (!error && data) {
-        let list: Question[] = data.map((q: any) => {
+      // Paginate through Supabase results to overcome PostgREST default 1000-row limit
+      let allRawQuestions: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await query
+          .order('order_index', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error('Error fetching questions from Supabase:', error);
+          break;
+        }
+        if (!data || data.length === 0) break;
+        allRawQuestions.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      if (allRawQuestions.length > 0) {
+        let list: Question[] = allRawQuestions.map((q: any) => {
           const choices = (q.answer_choices || []).sort((a: any, b: any) => a.order_index - b.order_index);
           const linkedExamIds = (q.exam_questions || []).map((eq: any) => eq.exam_id);
           return {
@@ -1440,30 +1612,46 @@ export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<vo
         concept: _co,
         ...rest
       }: any) => rest);
-      const { error: qErr } = await supabase.from('questions').upsert(cleanQuestions, { onConflict: 'id' });
-      if (qErr) console.error('[Supabase Sync] questions error:', qErr);
+      const chunkSize = 200;
+      for (let i = 0; i < cleanQuestions.length; i += chunkSize) {
+        const chunk = cleanQuestions.slice(i, i + chunkSize);
+        const { error: qErr } = await supabase.from('questions').upsert(chunk, { onConflict: 'id' });
+        if (qErr) console.error('[Supabase Sync] questions chunk error:', qErr);
+      }
     }
     const validQIds = new Set(validQuestions.map((q) => q.id));
 
     // 8. Sync answer choices (only for valid questions)
     const validChoices = store.answer_choices.filter((c) => validQIds.has(c.question_id));
     if (validChoices.length > 0) {
-      const { error: aErr } = await supabase.from('answer_choices').upsert(validChoices, { onConflict: 'id' });
-      if (aErr) console.error('[Supabase Sync] answer_choices error:', aErr);
+      const chunkSize = 250;
+      for (let i = 0; i < validChoices.length; i += chunkSize) {
+        const chunk = validChoices.slice(i, i + chunkSize);
+        const { error: aErr } = await supabase.from('answer_choices').upsert(chunk, { onConflict: 'id' });
+        if (aErr) console.error('[Supabase Sync] answer_choices chunk error:', aErr);
+      }
     }
 
     // 9. Sync explanations (only for valid questions)
     const validExpls = store.explanations.filter((e) => validQIds.has(e.question_id));
     if (validExpls.length > 0) {
-      const { error: expErr } = await supabase.from('explanations').upsert(validExpls, { onConflict: 'id' });
-      if (expErr) console.error('[Supabase Sync] explanations error:', expErr);
+      const chunkSize = 250;
+      for (let i = 0; i < validExpls.length; i += chunkSize) {
+        const chunk = validExpls.slice(i, i + chunkSize);
+        const { error: expErr } = await supabase.from('explanations').upsert(chunk, { onConflict: 'id' });
+        if (expErr) console.error('[Supabase Sync] explanations chunk error:', expErr);
+      }
     }
 
     // 10. Sync exam questions (only for valid exams & questions)
     const validExamQs = store.exam_questions.filter((eq) => validExamIds.has(eq.exam_id) && validQIds.has(eq.question_id));
     if (validExamQs.length > 0) {
-      const { error: eqErr } = await supabase.from('exam_questions').upsert(validExamQs, { onConflict: 'id' });
-      if (eqErr) console.error('[Supabase Sync] exam_questions error:', eqErr);
+      const chunkSize = 250;
+      for (let i = 0; i < validExamQs.length; i += chunkSize) {
+        const chunk = validExamQs.slice(i, i + chunkSize);
+        const { error: eqErr } = await supabase.from('exam_questions').upsert(chunk, { onConflict: 'id' });
+        if (eqErr) console.error('[Supabase Sync] exam_questions chunk error:', eqErr);
+      }
     }
   } catch (err) {
     console.error('[Supabase Sync Engine] Fatal sync error:', err);
@@ -1933,6 +2121,16 @@ export async function searchContent(query: string) {
 
 // ---------------- Stats -----------------
 export async function getPlatformStats(studentId = 'default_student') {
+  let exactTotalQuestions = 0;
+  if (supabase) {
+    try {
+      const { count } = await supabase.from('questions').select('*', { count: 'exact', head: true });
+      if (typeof count === 'number') exactTotalQuestions = count;
+    } catch (e) {
+      console.warn('Error fetching total questions count from Supabase:', e);
+    }
+  }
+
   const [allYears, allModules, allSubjects, allChapters, allConcepts, allExams, allQuestions] = await Promise.all([
     getAcademicYears(),
     getModules(),
@@ -1940,7 +2138,7 @@ export async function getPlatformStats(studentId = 'default_student') {
     getChapters(),
     getConcepts(),
     getExams(),
-    getQuestions(),
+    exactTotalQuestions ? Promise.resolve([]) : getQuestions(),
   ]);
 
   let studentAttempts: StudentAttempt[] = [];
@@ -1980,7 +2178,7 @@ export async function getPlatformStats(studentId = 'default_student') {
     total_chapters: allChapters.length,
     total_concepts: allConcepts.length,
     total_exams: allExams.length,
-    total_questions: allQuestions.length,
+    total_questions: exactTotalQuestions || allQuestions.length,
     completed_exams: studentAttempts.filter((a) => a.mode === 'complete_exam').length,
     total_attempts: studentAttempts.length,
     questions_answered: questionsAnswered,
@@ -2354,66 +2552,64 @@ export async function syncCloudToLocal(): Promise<{
 
   try {
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('انتهت مهلة الاتصال بالسحابة (Timeout)')), 4500)
+      setTimeout(() => reject(new Error('انتهت مهلة الاتصال بالسحابة (Timeout)')), 45000)
     );
 
-    const fetchAllPromise = Promise.all([
-      supabase.from('academic_years').select('*'),
-      supabase.from('modules').select('*'),
-      supabase.from('subjects').select('*'),
-      supabase.from('chapters').select('*'),
-      supabase.from('concepts').select('*'),
-      supabase.from('exams').select('*'),
-      supabase.from('questions').select('*'),
-      supabase.from('answer_choices').select('*'),
-      supabase.from('explanations').select('*'),
-      supabase.from('exam_questions').select('*'),
-    ]);
+    const fetchAllPromise = (async () => {
+      const [
+        years,
+        modules,
+        subjects,
+        chapters,
+        concepts,
+        exams,
+        questions,
+        choices,
+        explanations,
+        examQuestions,
+      ] = await Promise.all([
+        fetchAllSupabaseRows('academic_years'),
+        fetchAllSupabaseRows('modules'),
+        fetchAllSupabaseRows('subjects'),
+        fetchAllSupabaseRows('chapters'),
+        fetchAllSupabaseRows('concepts'),
+        fetchAllSupabaseRows('exams'),
+        fetchAllSupabaseRows('questions'),
+        fetchAllSupabaseRows('answer_choices'),
+        fetchAllSupabaseRows('explanations'),
+        fetchAllSupabaseRows('exam_questions'),
+      ]);
+      return { years, modules, subjects, chapters, concepts, exams, questions, choices, explanations, examQuestions };
+    })();
 
-    const [
-      yearsRes,
-      modulesRes,
-      subjectsRes,
-      chaptersRes,
-      conceptsRes,
-      examsRes,
-      questionsRes,
-      choicesRes,
-      explanationsRes,
-      examQuestionsRes,
-    ] = (await Promise.race([fetchAllPromise, timeoutPromise])) as any[];
+    const cloudData = (await Promise.race([fetchAllPromise, timeoutPromise])) as any;
 
     const store = readLocalStore();
     let newExamsCount = 0;
     let newQuestionsCount = 0;
 
-    function mergeAuthoritativeCloud<T extends { id: string }>(localArr: T[], cloudArr: T[] | null | undefined): { merged: T[]; addedCount: number } {
-      if (!cloudArr || cloudArr.length === 0) return { merged: localArr, addedCount: 0 };
-      return { merged: cloudArr, addedCount: cloudArr.length };
-    }
+    if (cloudData.years && cloudData.years.length > 0) store.academic_years = cloudData.years;
+    if (cloudData.modules && cloudData.modules.length > 0) store.modules = cloudData.modules;
+    if (cloudData.subjects && cloudData.subjects.length > 0) store.subjects = cloudData.subjects;
+    if (cloudData.chapters && cloudData.chapters.length > 0) store.chapters = cloudData.chapters;
+    if (cloudData.concepts && cloudData.concepts.length > 0) store.concepts = cloudData.concepts;
 
-    if (!yearsRes?.error && yearsRes?.data) store.academic_years = yearsRes.data;
-    if (!modulesRes?.error && modulesRes?.data) store.modules = modulesRes.data;
-    if (!subjectsRes?.error && subjectsRes?.data) store.subjects = subjectsRes.data;
-    if (!chaptersRes?.error && chaptersRes?.data) store.chapters = chaptersRes.data;
-    if (!conceptsRes?.error && conceptsRes?.data) store.concepts = conceptsRes.data;
-
-    if (!examsRes?.error && examsRes?.data) {
-      store.exams = examsRes.data.map((e: any) => ({
+    if (cloudData.exams && cloudData.exams.length > 0) {
+      store.exams = cloudData.exams.map((e: any) => ({
         ...e,
         exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
       }));
-      newExamsCount = examsRes.data.length;
+      newExamsCount = cloudData.exams.length;
     }
 
-    if (!questionsRes?.error && questionsRes?.data) {
-      store.questions = questionsRes.data;
-      newQuestionsCount = questionsRes.data.length;
+    if (cloudData.questions && cloudData.questions.length > 0) {
+      store.questions = cloudData.questions;
+      newQuestionsCount = cloudData.questions.length;
     }
 
-    if (!choicesRes?.error && choicesRes?.data) store.answer_choices = choicesRes.data;
-    if (!explanationsRes?.error && explanationsRes?.data) store.explanations = explanationsRes.data;
-    if (!examQuestionsRes?.error && examQuestionsRes?.data) store.exam_questions = examQuestionsRes.data;
+    if (cloudData.choices && cloudData.choices.length > 0) store.answer_choices = cloudData.choices;
+    if (cloudData.explanations && cloudData.explanations.length > 0) store.explanations = cloudData.explanations;
+    if (cloudData.examQuestions && cloudData.examQuestions.length > 0) store.exam_questions = cloudData.examQuestions;
 
     // Persist to local disk
     writeLocalStore(store);
@@ -2427,7 +2623,7 @@ export async function syncCloudToLocal(): Promise<{
       syncedStats: {
         exams: newExamsCount,
         questions: newQuestionsCount,
-        concepts: conceptsRes?.data?.length || 0,
+        concepts: cloudData?.concepts?.length || 0,
       },
     };
   } catch (err) {
