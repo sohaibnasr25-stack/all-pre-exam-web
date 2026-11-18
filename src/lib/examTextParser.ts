@@ -50,9 +50,9 @@ const arabicToLatinLetter: Record<string, string> = {
 
 const questionStartRegex = /^(?:(?:\[?(?:Question|سؤال|السؤال|س|Q)\s*(\d+)\]?[:.]?)|(?:\(?\s*(\d+)\s*[\.\)\:\-]\s*))/i;
 const choiceRegex = /^\s*(\*?)\s*(?:\[\s*([A-Ea-e]|[أ-ي])\s*\]|\(\s*([A-Ea-e]|[أ-ي])\s*\)|[-*•]?\s*([A-Ea-e]|[أ-ي])\s*[\.\)\:\-])\s*(\*?)\s*(.*)/;
-const explanationRegex = /^(?:[-*•]\s*)?(?:(?:Classification|تصنيف)\s*[:=—–\-]\s*)?(?:Explanation|Exp|التفسير|تفسير|الشرح|شرح)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]\s*(.*)$/i;
-const sourceRegex = /^(?:[-*•]\s*)?(?:Reference|Ref|Source|Book|المرجع|المصدر|الكتاب)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]\s*(.*)$/i;
-const pageRegex = /^(?:[-*•]\s*)?(?:Page|Pg|p\.|الصفحة|صفحة|ص)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]\s*(.*)$/i;
+const explanationRegex = /^(?:[-*•]\s*)?(?:(?:Classification|Classifications|(?:ال)?تصنيف(?:ات)?)\s*[:=—–\-]\s*)?(?:Explanation|Exp|التفسير|تفسير|الشرح|شرح)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]?\s*(.*)$/i;
+const sourceRegex = /^(?:[-*•]\s*)?(?:Reference|Ref|Source|Book|المرجع|المصدر|الكتاب)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]?\s*(.*)$/i;
+const pageRegex = /^(?:[-*•]\s*)?(?:Page|Pages|Pg|Pgs|pp\.|pp|p\.|الصفحة|صفحة|ص)(?:\s*\(([A-Ea-e]|[أ-ي])\))?\s*[:=—–\-]?\s*(.*)$/i;
 
 function splitMultiExamChunks(text: string): string[] {
   const lines = text.split(/\r?\n/);
@@ -145,7 +145,7 @@ function distributeChoiceExplanations(choicesList: ParsedChoice[]): void {
 
       if (bestSentence && bestScore > 0) {
         assigned[choice.letter] = bestSentence
-          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '')
+          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '')
           .trim();
       }
     }
@@ -157,7 +157,7 @@ function distributeChoiceExplanations(choicesList: ParsedChoice[]): void {
     } else if (sentences.length === choicesList.length) {
       choicesList.forEach((c, idx) => {
         c.explanation = sentences[idx]
-          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '')
+          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '')
           .trim();
       });
     }
@@ -167,7 +167,7 @@ function distributeChoiceExplanations(choicesList: ParsedChoice[]): void {
   for (const c of choicesList) {
     if (c.explanation) {
       c.explanation = c.explanation
-        .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '')
+        .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '')
         .trim();
     }
   }
@@ -346,29 +346,26 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
     let qSubject = '';
     let qChapter = '';
     let qConcept = '';
-    let explicitAnswerLetter: string | null = null;
+    let explicitAnswerLetters: string[] | null = null;
 
     const choices: ParsedChoice[] = [];
     let currentChoice: ParsedChoice | null = null;
+    let activeTargetChoice: ParsedChoice | null = null;
     let lastTargetField: 'text' | 'explanation' | 'source' = 'text';
 
     const flushCurrentChoice = () => {
       if (currentChoice) {
-        let text = currentChoice.text;
-        let explanation = currentChoice.explanation || '';
+        let text = currentChoice.text.trim();
+        let explanation = currentChoice.explanation?.trim() || '';
 
         // Extract any embedded explanation/classification from choice text
         const explMatch = text.match(/(?:Classification:\s*)?(Explanation(?:\s*\([A-Ea-e]\))?\s*[—–\-:].*)$/i);
         if (explMatch) {
           explanation = (explanation ? explanation + ' ' : '') + explMatch[1].trim();
           text = text.substring(0, explMatch.index).trim();
-        } else if (/Classification:/i.test(text)) {
-          const classIdx = text.search(/Classification:/i);
-          const explText = text.substring(classIdx).replace(/^Classification:\s*/i, '').trim();
+        } else if (/(?:Classification|Classifications|(?:ال)?تصنيف(?:ات)?)\s*[:=—–\-]/i.test(text)) {
+          const classIdx = text.search(/(?:Classification|Classifications|(?:ال)?تصنيف(?:ات)?)\s*[:=—–\-]/i);
           text = text.substring(0, classIdx).trim();
-          if (explText) {
-            explanation = (explanation ? explanation + ' ' : '') + explText;
-          }
         }
 
         // Extract any inline sub-choice like " - C. In renal..." or " - D. Niacin"
@@ -391,13 +388,26 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       }
     };
 
-    const findTargetChoice = (letter?: string): ParsedChoice | null => {
-      if (!letter) return currentChoice;
-      const normalizedLetter = (arabicToLatinLetter[letter] || letter).toUpperCase();
-      if (currentChoice && currentChoice.letter.toUpperCase() === normalizedLetter) {
-        return currentChoice;
+    const flushIfTargetDiffers = (targetLetter?: string) => {
+      if (currentChoice && targetLetter) {
+        const normalized = (arabicToLatinLetter[targetLetter] || targetLetter).toUpperCase();
+        if (currentChoice.letter.toUpperCase() !== normalized) {
+          flushCurrentChoice();
+        }
       }
-      return choices.find((c) => c.letter.toUpperCase() === normalizedLetter) || currentChoice;
+    };
+
+    const findTargetChoice = (letter?: string): ParsedChoice | null => {
+      if (letter) {
+        const normalized = (arabicToLatinLetter[letter] || letter).toUpperCase();
+        if (currentChoice && currentChoice.letter.toUpperCase() === normalized) {
+          return currentChoice;
+        }
+        return choices.find((c) => c.letter.toUpperCase() === normalized) || null;
+      }
+      if (currentChoice) return currentChoice;
+      if (activeTargetChoice) return activeTargetChoice;
+      return choices.find((c) => c.is_correct) || (choices.length > 0 ? choices[choices.length - 1] : null);
     };
 
     for (let l = 0; l < block.length; l++) {
@@ -418,38 +428,63 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
         }
       }
 
-      // Check metadata tags
-      const lower = rawL.toLowerCase();
-      if (lower.startsWith('vignette:') || lower.startsWith('clinical vignette:') || rawL.startsWith('الحالة:') || rawL.startsWith('الحالة السريرية:')) {
-        vignette = rawL.substring(rawL.indexOf(':') + 1).trim();
-        continue;
-      }
-      if (lower.startsWith('question:') || rawL.startsWith('السؤال:') || rawL.startsWith('نص السؤال:')) {
-        qText = rawL.substring(rawL.indexOf(':') + 1).trim();
-        continue;
-      }
-      if (lower.startsWith('difficulty:') || rawL.startsWith('الصعوبة:')) {
-        continue;
-      }
-      if (lower.startsWith('subject:') || rawL.startsWith('المادة:')) {
-        qSubject = rawL.substring(rawL.indexOf(':') + 1).trim();
-        continue;
-      }
-      if (lower.startsWith('chapter:') || rawL.startsWith('الشابتر:') || rawL.startsWith('الفصل:')) {
-        qChapter = rawL.substring(rawL.indexOf(':') + 1).trim();
-        continue;
-      }
-      if (lower.startsWith('concept:') || rawL.startsWith('المفهوم:') || rawL.startsWith('الموضوع:')) {
-        qConcept = rawL.substring(rawL.indexOf(':') + 1).trim();
+      // Check section headers like "Classification:" or "التصنيف:" alone
+      if (/^(?:[-*•]\s*)?(?:Classification|Classifications|(?:ال)?تصنيف(?:ات)?)\s*[:=—–\-]?$/i.test(rawL)) {
+        flushCurrentChoice();
+        activeTargetChoice = null;
+        lastTargetField = 'text';
         continue;
       }
 
-      // Check explicit answer line (e.g. "Answer: B", "Ans: C", "Key: D", "الإجابة: A")
-      const answerRegex = /^(?:Answer|Ans|Key|Correct(?:\s+Answer)?|الجواب|الإجابة|الإجابة\s+الصحيحة)\s*[:=\-]\s*([A-Ea-eأ-د])/i;
+      // Check metadata tags
+      const lower = rawL.toLowerCase();
+      if (lower.startsWith('vignette:') || lower.startsWith('clinical vignette:') || rawL.startsWith('الحالة:') || rawL.startsWith('الحالة السريرية:')) {
+        flushCurrentChoice();
+        vignette = rawL.substring(rawL.indexOf(':') + 1).trim();
+        activeTargetChoice = null;
+        continue;
+      }
+      if (lower.startsWith('question:') || rawL.startsWith('السؤال:') || rawL.startsWith('نص السؤال:')) {
+        flushCurrentChoice();
+        qText = rawL.substring(rawL.indexOf(':') + 1).trim();
+        activeTargetChoice = null;
+        continue;
+      }
+      if (lower.startsWith('difficulty:') || rawL.startsWith('الصعوبة:')) {
+        flushCurrentChoice();
+        activeTargetChoice = null;
+        continue;
+      }
+      if (lower.startsWith('subject:') || rawL.startsWith('المادة:')) {
+        flushCurrentChoice();
+        qSubject = rawL.substring(rawL.indexOf(':') + 1).trim();
+        activeTargetChoice = null;
+        continue;
+      }
+      if (lower.startsWith('chapter:') || rawL.startsWith('الشابتر:') || rawL.startsWith('الفصل:')) {
+        flushCurrentChoice();
+        qChapter = rawL.substring(rawL.indexOf(':') + 1).trim();
+        activeTargetChoice = null;
+        continue;
+      }
+      if (lower.startsWith('concept:') || rawL.startsWith('المفهوم:') || rawL.startsWith('الموضوع:')) {
+        flushCurrentChoice();
+        qConcept = rawL.substring(rawL.indexOf(':') + 1).trim();
+        activeTargetChoice = null;
+        continue;
+      }
+
+      // Check explicit answer line (e.g. "Answer: B", "Ans: C, D", "Key: D", "الإجابة: A, B")
+      const answerRegex = /^(?:Answer|Ans|Key|Correct(?:\s+Answer)?|الجواب|الإجابة|الإجابة\s+الصحيحة)\s*[:=\-]\s*(.*)$/i;
       const ansMatch = rawL.match(answerRegex);
       if (ansMatch) {
-        const rawAnsLetter = ansMatch[1];
-        explicitAnswerLetter = (arabicToLatinLetter[rawAnsLetter] || rawAnsLetter).toUpperCase();
+        flushCurrentChoice();
+        const rawAns = ansMatch[1].trim();
+        const letterMatches = rawAns.match(/[A-Ea-eأ-ي]/g);
+        if (letterMatches && letterMatches.length > 0) {
+          explicitAnswerLetters = letterMatches.map((l) => (arabicToLatinLetter[l] || l).toUpperCase());
+          activeTargetChoice = findTargetChoice(explicitAnswerLetters[0]);
+        }
         continue;
       }
 
@@ -477,42 +512,44 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
           text: choiceContent,
           is_correct: isCorrect,
         };
+        activeTargetChoice = currentChoice;
         lastTargetField = 'text';
         continue;
       }
 
-      // Explanation regex check (e.g. "Explanation (B): ...", "Explanation: ...", "الشرح: ...")
+      // Explanation regex check (e.g. "Explanation (A) - Correct:", "Explanation (B): ...", "Explanation: ...", "الشرح: ...")
       const explMatch = rawL.match(explanationRegex);
       if (explMatch) {
         const targetLetter = explMatch[1];
-        const explText = explMatch[2].trim();
-        const target = findTargetChoice(targetLetter);
+        flushIfTargetDiffers(targetLetter);
+        const explRawText = explMatch[2].trim();
+        const target: ParsedChoice | null = findTargetChoice(targetLetter);
+
         if (target) {
-          target.explanation = (target.explanation ? target.explanation + ' ' : '') + explText;
-          if (/^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s]|$)/i.test(explText)) {
+          const isExplicitCorrect = /^(?:[-—–\s]*)(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s—–\-]|$)/i.test(explRawText);
+          const isExplicitIncorrect = /^(?:[-—–\s]*)(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s—–\-]|$)/i.test(explRawText);
+
+          if (isExplicitCorrect) {
             target.is_correct = true;
-          } else if (/^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s]|$)/i.test(explText)) {
+          } else if (isExplicitIncorrect) {
             target.is_correct = false;
           }
-        } else if (currentChoice) {
-          currentChoice.explanation = (currentChoice.explanation ? currentChoice.explanation + ' ' : '') + explText;
-          if (/^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s]|$)/i.test(explText)) {
-            currentChoice.is_correct = true;
-          } else if (/^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s]|$)/i.test(explText)) {
-            currentChoice.is_correct = false;
+
+          const isOnlyStatusLabel = /^(?:[-—–\s]*)(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?$/i.test(explRawText);
+          let explContent = '';
+          if (!isOnlyStatusLabel) {
+            explContent = explRawText
+              .replace(/^(?:[-—–\s]*)(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '')
+              .trim();
           }
-        } else {
-          const correctChoice = choices.find((c) => c.is_correct) || choices[choices.length - 1];
-          if (correctChoice) {
-            correctChoice.explanation = (correctChoice.explanation ? correctChoice.explanation + ' ' : '') + explText;
-            if (/^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s]|$)/i.test(explText)) {
-              correctChoice.is_correct = true;
-            } else if (/^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s]|$)/i.test(explText)) {
-              correctChoice.is_correct = false;
-            }
+
+          if (explContent) {
+            target.explanation = (target.explanation ? target.explanation + ' ' : '') + explContent;
           }
+
+          activeTargetChoice = target;
+          lastTargetField = 'explanation';
         }
-        lastTargetField = 'explanation';
         continue;
       }
 
@@ -520,11 +557,12 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       const srcMatch = rawL.match(sourceRegex);
       if (srcMatch) {
         const targetLetter = srcMatch[1];
+        flushIfTargetDiffers(targetLetter);
         const srcText = srcMatch[2].trim();
-        const target = findTargetChoice(targetLetter);
+        const target: ParsedChoice | null = findTargetChoice(targetLetter) || activeTargetChoice;
 
-        // Auto-extract page number if embedded (e.g. ", Page 540" or "p. 115" or "ص 115")
-        const pageInsideMatch = srcText.match(/(?:,\s*|\s+)(?:page|pg|p\.|صفحة|ص)[\s\:\.]*(\d+[\-\d]*)/i);
+        // Auto-extract page number if embedded (e.g. ", Page 540" or "pp. 104-105" or "p. 115" or "ص 115")
+        const pageInsideMatch = srcText.match(/(?:,\s*|\s+)(?:page|pages|pg|pgs|pp\.|pp|p\.|صفحة|صفحات|ص)[\s\:\.]*(\d+[\-\d]*)/i);
         const extractedPage = pageInsideMatch ? pageInsideMatch[1] : '';
 
         if (target) {
@@ -532,21 +570,9 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
           if (extractedPage && !target.source_page) {
             target.source_page = extractedPage;
           }
-        } else if (currentChoice) {
-          currentChoice.source_document = srcText;
-          if (extractedPage && !currentChoice.source_page) {
-            currentChoice.source_page = extractedPage;
-          }
-        } else {
-          const correctChoice = choices.find((c) => c.is_correct) || choices[choices.length - 1];
-          if (correctChoice) {
-            correctChoice.source_document = srcText;
-            if (extractedPage && !correctChoice.source_page) {
-              correctChoice.source_page = extractedPage;
-            }
-          }
+          activeTargetChoice = target;
+          lastTargetField = 'source';
         }
-        lastTargetField = 'source';
         continue;
       }
 
@@ -554,25 +580,35 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
       const pgMatch = rawL.match(pageRegex);
       if (pgMatch) {
         const targetLetter = pgMatch[1];
+        flushIfTargetDiffers(targetLetter);
         const pageText = pgMatch[2].trim();
-        const target = findTargetChoice(targetLetter);
+        const target: ParsedChoice | null = findTargetChoice(targetLetter) || activeTargetChoice;
         if (target) {
           target.source_page = pageText;
-        } else if (currentChoice) {
-          currentChoice.source_page = pageText;
+          activeTargetChoice = target;
         }
         continue;
       }
 
-      // Continuation lines for active choice fields
-      if (currentChoice) {
-        if (lastTargetField === 'explanation') {
-          currentChoice.explanation = (currentChoice.explanation ? currentChoice.explanation + ' ' : '') + rawL;
-        } else if (lastTargetField === 'source') {
-          currentChoice.source_document = (currentChoice.source_document ? currentChoice.source_document + ' ' : '') + rawL;
-        } else {
-          currentChoice.text += ' ' + rawL;
+      // Continuation lines for active choice explanation
+      if (lastTargetField === 'explanation' && activeTargetChoice) {
+        activeTargetChoice.explanation = (activeTargetChoice.explanation ? activeTargetChoice.explanation + ' ' : '') + rawL;
+        continue;
+      }
+
+      // Continuation lines for active source / reference
+      if (lastTargetField === 'source' && activeTargetChoice) {
+        activeTargetChoice.source_document = (activeTargetChoice.source_document ? activeTargetChoice.source_document + ' ' : '') + rawL;
+        const pageInsideMatch = rawL.match(/(?:,\s*|\s+)(?:page|pages|pg|pgs|pp\.|pp|p\.|صفحة|صفحات|ص)[\s\:\.]*(\d+[\-\d]*)/i);
+        if (pageInsideMatch && !activeTargetChoice.source_page) {
+          activeTargetChoice.source_page = pageInsideMatch[1];
         }
+        continue;
+      }
+
+      // Continuation lines for active choice text
+      if (currentChoice && lastTargetField === 'text') {
+        currentChoice.text += ' ' + rawL;
         continue;
       }
 
@@ -597,51 +633,29 @@ export function parseSingleExam(rawText: string): ParsedExamPayload {
     // Sort choices alphabetically by letter
     choices.sort((a, b) => a.letter.localeCompare(b.letter));
 
-    // Choice explanations: mark choices explicitly marked as Incorrect or Correct
-    choices.forEach((c) => {
-      if (c.explanation) {
-        const trimmedExp = c.explanation.trim();
-        if (
-          /^(?:Incorrect|غير\s*صحيح|خطأ)(?:[:\s—–\-]|$)/i.test(trimmedExp) ||
-          /Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Incorrect|غير\s*صحيح|خطأ)/i.test(c.explanation)
-        ) {
-          c.is_correct = false;
-        } else if (
-          /^(?:Correct|صحيح|الإجابة\s*الصحيحة)(?:[:\s—–\-]|$)/i.test(trimmedExp) ||
-          /Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i.test(c.explanation)
-        ) {
-          c.is_correct = true;
-        }
-      }
-    });
-
-    // Check if any explanation explicitly indicates the correct choice letter
-    const correctExpl = choices.find(
-      (c) => c.explanation && /Explanation\s*\([A-Ea-eأ-ي]\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i.test(c.explanation)
-    );
-    if (correctExpl && correctExpl.explanation) {
-      const m = correctExpl.explanation.match(/Explanation\s*\(([A-Ea-eأ-ي])\)\s*[—–\-:]\s*(?:Correct|صحيح|الإجابة\s*الصحيحة)/i);
-      if (m) {
-        const correctLetter = (arabicToLatinLetter[m[1]] || m[1]).toUpperCase();
+    // Resolve choice correctness
+    if (explicitAnswerLetters && explicitAnswerLetters.length > 0) {
+      choices.forEach((c) => {
+        c.is_correct = explicitAnswerLetters!.includes(c.letter);
+      });
+    } else {
+      const confirmedCorrect = choices.filter((c) => c.is_correct);
+      if (confirmedCorrect.length > 0) {
+        const correctLetters = confirmedCorrect.map((c) => c.letter);
         choices.forEach((c) => {
-          c.is_correct = c.letter === correctLetter;
+          c.is_correct = correctLetters.includes(c.letter);
         });
+      } else {
+        if (choices.length > 0) choices[0].is_correct = true;
       }
     }
 
-    // If explicit answer was declared via "Answer: X" line
-    if (explicitAnswerLetter) {
-      choices.forEach((c) => {
-        c.is_correct = c.letter === explicitAnswerLetter;
-      });
-    } else {
-      // If any choice is explicitly marked correct, ensure others are false
-      const confirmedCorrect = choices.filter((c) => c.is_correct);
-      if (confirmedCorrect.length === 1) {
-        const correctLetter = confirmedCorrect[0].letter;
-        choices.forEach((c) => {
-          c.is_correct = c.letter === correctLetter;
-        });
+    // Clean redundant leading labels like "Correct: " or "Incorrect: " (requiring colon/dash)
+    for (const c of choices) {
+      if (c.explanation) {
+        c.explanation = c.explanation
+          .replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '')
+          .trim();
       }
     }
 

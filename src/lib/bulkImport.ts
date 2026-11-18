@@ -233,12 +233,12 @@ function importSingleExamIntoStore(
       };
       store.answer_choices.push(choiceObj);
 
-      let explText = (c.explanation || '').replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '').trim();
+      let explText = (c.explanation || '').replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '').trim();
       if (!explText && c.is_correct && questionLevelExpl) {
         // Only inherit questionLevelExpl if it doesn't explicitly belong to a different choice letter
         const targetLetterMatch = questionLevelExpl.match(/Explanation\s*\(([A-Ea-e])\)/i);
         if (!targetLetterMatch || targetLetterMatch[1].toUpperCase() === c.letter.toUpperCase()) {
-          explText = questionLevelExpl.replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]?\s*/i, '').trim();
+          explText = questionLevelExpl.replace(/^(?:Correct|Incorrect|صحيح|غير\s*صحيح|خطأ)\s*[:—–\-]\s*/i, '').trim();
         }
       }
 
