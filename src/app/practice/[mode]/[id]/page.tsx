@@ -598,7 +598,7 @@ function PracticeInner({ params }: PracticePageProps) {
               اختر النمط المناسب لهدفك اليوم (المذاكرة الفورية أو المحاكاة الكاملة):
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1rem' }}>
               {/* Option A: Instant Correction (سؤال بسؤال) */}
               <div
                 onClick={() => setFeedbackMode('instant')}

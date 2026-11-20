@@ -115,58 +115,60 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="container" style={{ padding: '2.5rem 1.5rem 4rem' }}>
+    <div className="container dashboard-page-container" style={{ padding: '1.75rem 1.25rem 3rem' }}>
       {/* Welcome Banner */}
       <div
         className="glass-panel hero-welcome-banner"
         style={{
-          padding: '2.5rem',
+          padding: '1.85rem 2rem',
           borderRadius: 'var(--radius-xl)',
-          marginBottom: '2.5rem',
+          marginBottom: '1.85rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1.5rem',
+          gap: '1.25rem',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        <div style={{ maxWidth: '640px', width: '100%' }}>
+        <div style={{ maxWidth: '640px', width: '100%', flex: '1 1 320px', minWidth: 0 }}>
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
+              flexWrap: 'wrap',
               gap: '0.4rem',
-              padding: '0.3rem 0.75rem',
+              padding: '0.28rem 0.7rem',
               borderRadius: '9999px',
               background: 'var(--hero-pill-badge-bg)',
               border: '1px solid var(--hero-pill-badge-border)',
               color: 'var(--hero-pill-badge-text)',
-              fontSize: '0.8rem',
+              fontSize: '0.76rem',
               fontWeight: 600,
-              marginBottom: '1rem',
+              marginBottom: '0.85rem',
+              maxWidth: '100%',
             }}
           >
-            <GraduationCap size={15} />
+            <GraduationCap size={14} aria-hidden="true" />
             <span>MEDICAL BOARD &amp; CLINICAL CLERKSHIP PLATFORM</span>
           </div>
 
-          <h1 style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1.25, marginBottom: '0.75rem', color: 'var(--text-main)' }}>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 2.2vw, 2.05rem)', fontWeight: 800, lineHeight: 1.25, marginBottom: '0.65rem', color: 'var(--text-main)' }}>
             Ready to master your medical exams?
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.02rem', lineHeight: 1.6, marginBottom: '1.75rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.96rem', lineHeight: 1.58, marginBottom: '1.35rem' }}>
             Systematic exam preparation organized strictly by Academic Year → Module → Subject → Chapter → Concept.
             Practice complete past papers or drill targeted high-yield concepts with per-choice source citations.
           </p>
 
-          <div className="hero-cta-group" style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+          <div className="hero-cta-group" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <Link href="/exams" className="btn btn-primary btn-lg">
               <span>Start Complete Exam</span>
-              <Play size={16} fill="#ffffff" />
+              <Play size={15} fill="#ffffff" aria-hidden="true" />
             </Link>
             <Link href="/study" className="btn btn-secondary btn-lg">
-              <BookOpen size={16} />
+              <BookOpen size={15} aria-hidden="true" />
               <span>Browse by Subject</span>
             </Link>
           </div>
@@ -177,11 +179,12 @@ export default function StudentDashboard() {
           className="hero-curriculum-card"
           style={{
             borderRadius: 'var(--radius-lg)',
-            padding: '1.5rem',
-            minWidth: '240px',
+            padding: '1.25rem 1.35rem',
+            minWidth: '220px',
+            flex: '0 1 250px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.85rem',
+            gap: '0.7rem',
           }}
         >
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>
@@ -281,78 +284,78 @@ export default function StudentDashboard() {
         className="stats-grid-4"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '2.5rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
+          gap: '1rem',
+          marginBottom: '2rem',
         }}
       >
         {/* Exams Completed */}
-        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Exams Completed</span>
-            <div className="icon-box-cyan" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4' }}>
-              <FileCheck2 size={18} />
+        <div className="card-3d" style={{ padding: '1.25rem', borderRadius: 'var(--radius-lg)', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.86rem', fontWeight: 600 }}>Exams Completed</span>
+            <div className="icon-box-cyan" style={{ padding: '0.4rem', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', flexShrink: 0 }}>
+              <FileCheck2 size={17} />
             </div>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#38bdf8' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#38bdf8' }}>
             {stats?.completed_exams ?? 0}
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
             Of {stats?.total_exams ?? 0} available complete exams
           </div>
         </div>
 
         {/* Questions Solved */}
-        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Questions Answered</span>
-            <div className="icon-box-green" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
-              <CheckCircle2 size={18} />
+        <div className="card-3d" style={{ padding: '1.25rem', borderRadius: 'var(--radius-lg)', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.86rem', fontWeight: 600 }}>Questions Answered</span>
+            <div className="icon-box-green" style={{ padding: '0.4rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', flexShrink: 0 }}>
+              <CheckCircle2 size={17} />
             </div>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#34d399' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#34d399' }}>
             {stats?.questions_answered ?? 0}
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
             Across all practice sessions &amp; exams
           </div>
         </div>
 
         {/* Overall Accuracy */}
-        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Overall Accuracy</span>
-            <div className="icon-box-amber" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
-              <TrendingDown size={18} />
+        <div className="card-3d" style={{ padding: '1.25rem', borderRadius: 'var(--radius-lg)', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.86rem', fontWeight: 600 }}>Overall Accuracy</span>
+            <div className="icon-box-amber" style={{ padding: '0.4rem', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', flexShrink: 0 }}>
+              <TrendingDown size={17} />
             </div>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fbbf24' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fbbf24' }}>
             {stats?.overall_accuracy ?? 0}%
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
             Passing threshold: 70%
           </div>
         </div>
 
         {/* Question Bank Bookmarks */}
-        <div className="card-3d" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Question Bank</span>
-            <div className="icon-box-purple" style={{ padding: '0.45rem', borderRadius: '8px', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc' }}>
-              <Bookmark size={18} />
+        <div className="card-3d" style={{ padding: '1.25rem', borderRadius: 'var(--radius-lg)', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.86rem', fontWeight: 600 }}>Question Bank</span>
+            <div className="icon-box-purple" style={{ padding: '0.4rem', borderRadius: '8px', background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', flexShrink: 0 }}>
+              <Bookmark size={17} />
             </div>
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#c084fc' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#c084fc' }}>
             {stats?.bookmarks_count ?? 0}
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
             Flagged &amp; categorized questions
           </div>
         </div>
       </div>
 
       {/* Main Grid: Fast Entry Points & Recent Activity */}
-      <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+      <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1.75rem' }}>
         {/* Left Column: Quick Entry Portals */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <h2 style={{ fontSize: '1.35rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>

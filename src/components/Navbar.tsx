@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -24,6 +24,12 @@ export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isWide, setIsWide] = useState(true);
+
+  const headerRef = useRef<HTMLElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const navListRef = useRef<HTMLUListElement | null>(null);
+  const lastCollapsedWidthRef = useRef<number>(0);
 
   const navLinks = [
     { label: 'Dashboard', href: '/', icon: Stethoscope },
@@ -34,7 +40,7 @@ export default function Navbar() {
     { label: 'Weakness Analysis', href: '/weakness-analysis', icon: TrendingDown },
   ];
 
-  // Condensed bottom nav for mobile (5 items max)
+  // Condensed bottom nav for mobile (5 items + search)
   const bottomNavLinks = [
     { label: 'Home', href: '/', icon: Home },
     { label: 'Exams', href: '/exams', icon: FileCheck2 },
@@ -43,12 +49,93 @@ export default function Navbar() {
     { label: 'Weakness', href: '/weakness-analysis', icon: TrendingDown },
   ];
 
+  // Dynamically measure whether the inline navigation row fits without horizontal overflow.
+  // Follows modern-web-guidance: measure with is-measuring (transition: none) & ResizeObserver.
+  const checkNavFit = useCallback((forceMeasure = false) => {
+    const header = headerRef.current;
+    const inner = innerRef.current;
+    if (!header || !inner) return;
+
+    // Below 990px, mobile bottom nav handles primary links
+    if (window.innerWidth <= 990) {
+      setIsWide(false);
+      setMobileMenuOpen(false);
+      return;
+    }
+
+    const currentWidth = header.clientWidth;
+    // While collapsed, only remeasure when the header grows (prevents layout thrashing on shrink)
+    if (!forceMeasure && !header.classList.contains('is-wide') && currentWidth <= lastCollapsedWidthRef.current) {
+      return;
+    }
+
+    const hadWide = header.classList.contains('is-wide');
+    header.classList.add('is-measuring');
+    header.classList.add('is-wide');
+
+    // Compare scrollWidth against clientWidth to guarantee zero clipping
+    const fits = inner.scrollWidth <= inner.clientWidth + 1;
+
+    if (!fits) {
+      header.classList.remove('is-wide');
+      lastCollapsedWidthRef.current = currentWidth;
+    } else {
+      lastCollapsedWidthRef.current = 0;
+    }
+
+    if (fits !== hadWide) {
+      setIsWide(fits);
+      if (fits) setMobileMenuOpen(false);
+    }
+
+    requestAnimationFrame(() => {
+      header.classList.remove('is-measuring');
+    });
+  }, []);
+
+  useEffect(() => {
+    checkNavFit(true);
+
+    const header = headerRef.current;
+    const navList = navListRef.current;
+    if (!header || typeof ResizeObserver === 'undefined') return;
+
+    const ro = new ResizeObserver(() => {
+      checkNavFit(false);
+    });
+    ro.observe(header);
+    if (navList) ro.observe(navList);
+
+    const handleResize = () => checkNavFit(true);
+    window.addEventListener('resize', handleResize);
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => checkNavFit(true)).catch(() => {});
+    }
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [checkNavFit]);
+
+  // Close collapsed dropdown on Escape
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
   const isPractice = pathname.startsWith('/practice/');
 
   return (
     <>
       <header
-        className={`site-header ${isPractice ? 'in-practice-session' : ''}`}
+        ref={headerRef}
+        className={`site-header ${isWide ? 'is-wide' : 'is-collapsed'} ${isPractice ? 'in-practice-session' : ''}`}
         style={{
           position: 'sticky',
           top: 0,
@@ -60,113 +147,82 @@ export default function Navbar() {
           transition: 'background-color 0.25s ease, border-color 0.25s ease',
         }}
       >
-        <div
-          className="container"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            height: '60px',
-          }}
-        >
+        <div ref={innerRef} className="navbar-inner">
           {/* Brand Logo */}
           <Link
             href="/"
+            className="navbar-brand"
             style={{
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.6rem',
+              gap: '0.45rem',
               fontWeight: 800,
-              fontSize: '1.2rem',
               letterSpacing: '-0.02em',
               color: 'var(--text-main)',
               flexShrink: 0,
+              whiteSpace: 'nowrap',
             }}
           >
             <div
+              className="navbar-brand-icon"
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '9px',
                 background: 'linear-gradient(135deg, #0d9488 0%, #0284c7 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#ffffff',
-                boxShadow: '0 4px 12px rgba(13, 148, 136, 0.4)',
+                boxShadow: '0 4px 12px rgba(13, 148, 136, 0.35)',
+                flexShrink: 0,
               }}
             >
-              <Stethoscope size={20} />
+              <Stethoscope size={18} aria-hidden="true" />
             </div>
-            <span>
+            <span className="navbar-brand-text">
               Omni<span style={{ color: 'var(--cyan)' }}>Med</span>
             </span>
           </Link>
 
-          {/* Desktop Nav Items with 3D Floating Effect */}
-          <nav
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              marginLeft: '1.25rem',
-              flex: 1,
-            }}
-            className="desktop-nav"
-          >
-            {navLinks.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`nav-item-3d ${isActive ? 'active' : ''}`}
-                >
-                  <Icon size={15} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          {/* Primary Navigation (single semantic <nav> landmark) */}
+          <nav className="desktop-nav" aria-label="Primary">
+            <ul ref={navListRef} className="desktop-nav-list">
+              {navLinks.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`nav-item-3d ${isActive ? 'active' : ''}`}
+                    >
+                      <Icon size={14} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </nav>
 
-          {/* Action Controls: Storage Status, Search, Theme Toggle & Admin */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          {/* Action Controls: Storage Status, Search, Theme Toggle, Admin & Overflow Menu Trigger */}
+          <div className="navbar-actions">
             {/* Storage Mode Status & Switcher */}
             <StorageModeBadge />
 
             {/* Global Search Trigger */}
             <button
+              type="button"
               onClick={() => setSearchOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.4rem 0.75rem',
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-muted)',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
+              className="navbar-search-btn"
+              aria-label="Search questions and concepts"
               title="Search everything (Ctrl+K)"
             >
-              <Search size={15} />
+              <Search size={14} aria-hidden="true" />
               <span className="search-text">Search...</span>
-              <kbd
-                style={{
-                  fontSize: '0.7rem',
-                  padding: '2px 5px',
-                  background: 'rgba(148, 163, 184, 0.15)',
-                  borderRadius: '4px',
-                  color: 'var(--text-dim)',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                ⌘K
-              </kbd>
+              <kbd className="search-kbd">⌘K</kbd>
             </button>
 
             {/* Dark / Light Theme Toggle */}
@@ -175,85 +231,66 @@ export default function Navbar() {
             {/* Admin Portal Link */}
             <Link
               href="/admin"
-              className={`nav-item-3d ${pathname.startsWith('/admin') ? 'active' : ''}`}
+              aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+              aria-label="Admin & Content Management Portal"
+              className={`nav-item-3d navbar-admin-btn ${pathname.startsWith('/admin') ? 'active' : ''}`}
               style={{
                 borderColor: pathname.startsWith('/admin') ? 'rgba(239, 68, 68, 0.6)' : undefined,
                 color: pathname.startsWith('/admin') ? '#fb7185' : undefined,
               }}
-              title="Admin &amp; Content Management Portal"
+              title="Admin & Content Management Portal"
             >
-              <ShieldAlert size={14} color="#ef4444" />
+              <ShieldAlert size={14} color="#ef4444" aria-hidden="true" />
               <span className="admin-text">Admin</span>
             </Link>
 
-            {/* Mobile Hamburger Toggle — only shown in tablet range before bottom nav kicks in */}
+            {/* Overflow Menu Toggle — automatically appears when inline desktop nav can't fit */}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="mobile-toggle"
-              style={{
-                display: 'none',
-                padding: '0.45rem',
-                color: 'var(--text-main)',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-              }}
+              type="button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="navbar-overflow-toggle"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="site-overflow-menu"
               aria-label="Toggle Navigation Menu"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+              <span className="overflow-toggle-label">Menu</span>
             </button>
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Overflow Dropdown Menu (only when desktop inline row collapses due to narrow width/zoom) */}
         {mobileMenuOpen && (
           <div
-            style={{
-              padding: '0.85rem 1rem 1rem',
-              background: 'var(--bg-surface)',
-              borderBottom: '1px solid var(--border-subtle)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-            }}
+            id="site-overflow-menu"
+            className="navbar-overflow-dropdown"
+            role="region"
+            aria-label="Navigation menu"
           >
-            {navLinks.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`nav-item-3d ${isActive ? 'active' : ''}`}
-                  style={{
-                    width: '100%',
-                    justifyContent: 'flex-start',
-                    padding: '0.7rem 1rem',
-                    fontSize: '0.92rem',
-                  }}
-                >
-                  <Icon size={17} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-            <Link
-              href="/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`nav-item-3d ${pathname.startsWith('/admin') ? 'active' : ''}`}
-              style={{
-                width: '100%',
-                justifyContent: 'flex-start',
-                padding: '0.7rem 1rem',
-                fontSize: '0.92rem',
-                borderColor: 'rgba(239, 68, 68, 0.4)',
-                color: '#fb7185',
-              }}
-            >
-              <ShieldAlert size={17} color="#ef4444" />
-              <span>Admin Panel</span>
-            </Link>
+            <div className="navbar-overflow-dropdown-grid">
+              {navLinks.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`nav-item-3d ${isActive ? 'active' : ''}`}
+                    style={{
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      padding: '0.65rem 0.9rem',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    <Icon size={16} aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
       </header>
@@ -269,10 +306,11 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`mobile-nav-item ${isActive ? 'active' : ''}`}
                 >
                   <span className="mobile-nav-icon">
-                    <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                    <Icon size={21} strokeWidth={isActive ? 2.5 : 1.8} aria-hidden="true" />
                   </span>
                   <span>{item.label}</span>
                 </Link>
@@ -280,12 +318,13 @@ export default function Navbar() {
             })}
             {/* Search button in bottom nav */}
             <button
+              type="button"
               className="mobile-nav-item"
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
             >
               <span className="mobile-nav-icon">
-                <Search size={22} strokeWidth={1.8} />
+                <Search size={21} strokeWidth={1.8} aria-hidden="true" />
               </span>
               <span>Search</span>
             </button>
@@ -295,28 +334,6 @@ export default function Navbar() {
 
       {/* Global Search Dialog Modal */}
       <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-
-      <style jsx>{`
-        @media (max-width: 990px) {
-          :global(.desktop-nav) {
-            display: none !important;
-          }
-          :global(.mobile-toggle) {
-            display: none !important;
-          }
-          :global(.search-text) {
-            display: none !important;
-          }
-          :global(.admin-text) {
-            display: none !important;
-          }
-        }
-        @media (max-width: 768px) {
-          :global(.in-practice-session) {
-            display: none !important;
-          }
-        }
-      `}</style>
     </>
   );
 }

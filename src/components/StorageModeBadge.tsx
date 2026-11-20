@@ -105,36 +105,42 @@ export default function StorageModeBadge() {
   return (
     <div style={{ position: 'relative' }} ref={popoverRef}>
       <button
+        type="button"
         onClick={() => setMenuOpen(!menuOpen)}
+        className="storage-badge-btn"
+        aria-label={status?.mode === 'local_only' ? 'Local Database storage mode' : 'Auto Cloud storage mode'}
         title={isLocal ? 'Local Database Active (Offline Safe & Fast)' : 'Cloud Storage Active (Resilient Fallback Enabled)'}
         style={{
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: '0.4rem',
-          padding: '0.4rem 0.75rem',
+          gap: '0.35rem',
+          padding: '0.36rem 0.6rem',
           borderRadius: 'var(--radius-md)',
           background: isLocal ? 'rgba(16, 185, 129, 0.12)' : 'rgba(6, 182, 212, 0.12)',
           border: isLocal ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(6, 182, 212, 0.3)',
           color: isLocal ? 'var(--success)' : 'var(--cyan)',
-          fontSize: '0.82rem',
+          fontSize: '0.78rem',
           fontWeight: 600,
           cursor: 'pointer',
           transition: 'all 0.18s ease',
+          whiteSpace: 'nowrap',
         }}
       >
         {isLocal ? (
-          <HardDrive size={14} className="text-emerald-500" />
+          <HardDrive size={14} className="text-emerald-500" aria-hidden="true" />
         ) : (
-          <Cloud size={14} className="text-cyan-400" />
+          <Cloud size={14} className="text-cyan-400" aria-hidden="true" />
         )}
-        <span className="badge-text" style={{ whiteSpace: 'nowrap' }}>
+        <span className="badge-text storage-badge-text" style={{ whiteSpace: 'nowrap' }}>
           {status?.mode === 'local_only' ? 'Local DB' : 'Auto Cloud'}
         </span>
         <span
+          aria-hidden="true"
           style={{
             width: '7px',
             height: '7px',
             borderRadius: '50%',
+            flexShrink: 0,
             background: isLocal ? '#10b981' : '#06b6d4',
             boxShadow: isLocal ? '0 0 6px #10b981' : '0 0 6px #06b6d4',
           }}
@@ -144,15 +150,17 @@ export default function StorageModeBadge() {
       {/* Popover Dropdown */}
       {menuOpen && (
         <div
+          className="storage-popover-dropdown"
           style={{
             position: 'absolute',
             top: 'calc(100% + 8px)',
             right: 0,
-            width: '335px',
+            width: 'min(335px, calc(100dvw - 1.5rem))',
+            maxWidth: 'calc(100dvw - 1.5rem)',
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-highlight)',
             borderRadius: 'var(--radius-lg)',
-            padding: '1.2rem',
+            padding: '1.1rem',
             boxShadow: 'var(--shadow-lg)',
             zIndex: 100,
             animation: 'cardFadeIn 0.18s ease-out',

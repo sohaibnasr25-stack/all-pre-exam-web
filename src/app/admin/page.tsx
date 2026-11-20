@@ -1448,7 +1448,7 @@ D) Normal myocardium with subtle wavy fibers only
                         لا توجد موديولات مسجلة لهذا العام بعد. اضغط "إضافة موديول لهذا العام" لإنشاء موديول جديد وربطه به فوراً.
                       </div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '0.75rem' }}>
                         {yearModules.map((mod) => (
                           <div
                             key={mod.id}
@@ -1671,7 +1671,7 @@ D) Normal myocardium with subtle wavy fibers only
                         لا توجد امتحانات مسجلة لهذا الموديول بعد. اضغط "إضافة امتحان لهذا الموديول" لإنشاء امتحان وربطه به فوراً.
                       </div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '0.75rem' }}>
                         {modExams.map((exam) => {
                           const qCount = questions.filter(
                             (q) => q.exam_ids?.includes(exam.id) || (q as any).exam_questions?.some((eq: any) => eq.exam_id === exam.id)
@@ -2649,7 +2649,7 @@ C) Choice C"
           </div>
 
           {/* Admins List Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
             {adminUsers.length === 0 ? (
               <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center', gridColumn: '1 / -1', color: 'var(--text-muted)' }}>
                 لم يتم إضافة مشرفين في جدول Supabase بعد. يمكنك الضغط على "إضافة مشرف جديد" لإنشاء أول حساب، أو استخدام كلمة المرور الاحتياطية.
