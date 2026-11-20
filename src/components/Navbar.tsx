@@ -28,7 +28,9 @@ export default function Navbar() {
 
   const headerRef = useRef<HTMLElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
   const navListRef = useRef<HTMLUListElement | null>(null);
+  const actionsRef = useRef<HTMLDivElement | null>(null);
   const lastCollapsedWidthRef = useRef<number>(0);
 
   const navLinks = [
@@ -69,12 +71,18 @@ export default function Navbar() {
       return;
     }
 
-    const hadWide = header.classList.contains('is-wide');
     header.classList.add('is-measuring');
     header.classList.add('is-wide');
 
-    // Compare scrollWidth against clientWidth to guarantee zero clipping
-    const fits = inner.scrollWidth <= inner.clientWidth + 1;
+    // Compare scrollWidth against clientWidth AND verify physical clearance between nav & actions
+    let fits = inner.scrollWidth <= inner.clientWidth + 1;
+    if (fits && navRef.current && actionsRef.current) {
+      const navRect = navRef.current.getBoundingClientRect();
+      const actionsRect = actionsRef.current.getBoundingClientRect();
+      if (navRect.width > 0 && actionsRect.width > 0 && navRect.right > actionsRect.left - 2) {
+        fits = false;
+      }
+    }
 
     if (!fits) {
       header.classList.remove('is-wide');
@@ -83,10 +91,8 @@ export default function Navbar() {
       lastCollapsedWidthRef.current = 0;
     }
 
-    if (fits !== hadWide) {
-      setIsWide(fits);
-      if (fits) setMobileMenuOpen(false);
-    }
+    setIsWide(fits);
+    if (fits) setMobileMenuOpen(false);
 
     requestAnimationFrame(() => {
       header.classList.remove('is-measuring');
@@ -97,14 +103,18 @@ export default function Navbar() {
     checkNavFit(true);
 
     const header = headerRef.current;
+    const inner = innerRef.current;
     const navList = navListRef.current;
+    const actions = actionsRef.current;
     if (!header || typeof ResizeObserver === 'undefined') return;
 
     const ro = new ResizeObserver(() => {
       checkNavFit(false);
     });
     ro.observe(header);
+    if (inner) ro.observe(inner);
     if (navList) ro.observe(navList);
+    if (actions) ro.observe(actions);
 
     const handleResize = () => checkNavFit(true);
     window.addEventListener('resize', handleResize);
@@ -135,7 +145,7 @@ export default function Navbar() {
     <>
       <header
         ref={headerRef}
-        className={`site-header ${isWide ? 'is-wide' : 'is-collapsed'} ${isPractice ? 'in-practice-session' : ''}`}
+        className={`site-header ${isWide ? 'is-wide' : ''} ${isPractice ? 'in-practice-session' : ''}`}
         style={{
           position: 'sticky',
           top: 0,
@@ -186,7 +196,7 @@ export default function Navbar() {
           </Link>
 
           {/* Primary Navigation (single semantic <nav> landmark) */}
-          <nav className="desktop-nav" aria-label="Primary">
+          <nav ref={navRef} className="desktop-nav" aria-label="Primary">
             <ul ref={navListRef} className="desktop-nav-list">
               {navLinks.map((item) => {
                 const Icon = item.icon;
@@ -208,7 +218,7 @@ export default function Navbar() {
           </nav>
 
           {/* Action Controls: Storage Status, Search, Theme Toggle, Admin & Overflow Menu Trigger */}
-          <div className="navbar-actions">
+          <div ref={actionsRef} className="navbar-actions">
             {/* Storage Mode Status & Switcher */}
             <StorageModeBadge />
 
