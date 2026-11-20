@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { WeaknessMetric } from '@/lib/types';
+import { studentFetch } from '@/lib/studentClient';
 
 export default function WeaknessAnalysisPage() {
   const [metrics, setMetrics] = useState<WeaknessMetric[]>([]);
@@ -22,7 +23,7 @@ export default function WeaknessAnalysisPage() {
   useEffect(() => {
     async function loadMetrics() {
       try {
-        const res = await fetch('/api/weakness-analysis');
+        const res = await studentFetch('/api/weakness-analysis');
         const data = await res.json();
         if (data.success) {
           setMetrics(data.data);

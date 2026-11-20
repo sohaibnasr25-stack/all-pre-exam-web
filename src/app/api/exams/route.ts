@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getExams, getExam, createExam, updateExam, deleteExam } from '@/lib/db';
 import { isAuthorizedAdmin } from '@/lib/adminAuth';
+import { extractStudentId, NO_STORE_PRIVATE_HEADERS } from '@/lib/studentServer';
 
 export async function GET(req: Request) {
   try {
@@ -8,20 +9,21 @@ export async function GET(req: Request) {
     const id = searchParams.get('id');
     if (id) {
       const exam = await getExam(id);
-      if (!exam) return NextResponse.json({ success: false, message: 'Exam not found' }, { status: 404 });
+      if (!exam) return NextResponse.json({ success: false, message: 'Exam not found' }, { status: 404, headers: NO_STORE_PRIVATE_HEADERS });
       return NextResponse.json({ success: true, data: exam }, {
-        headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+        headers: NO_STORE_PRIVATE_HEADERS
       });
     }
 
     const academicYearId = searchParams.get('academic_year_id') || undefined;
     const moduleId = searchParams.get('module_id') || undefined;
-    const exams = await getExams({ academic_year_id: academicYearId, module_id: moduleId });
+    const student_id = extractStudentId(req) || undefined;
+    const exams = await getExams({ academic_year_id: academicYearId, module_id: moduleId, student_id });
     return NextResponse.json({ success: true, data: exams }, {
-      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
+      headers: NO_STORE_PRIVATE_HEADERS
     });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500, headers: NO_STORE_PRIVATE_HEADERS });
   }
 }
 

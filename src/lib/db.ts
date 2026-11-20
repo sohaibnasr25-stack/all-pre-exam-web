@@ -21,6 +21,7 @@ import {
   AdminUser,
 } from './types';
 import { getStorageConfig, getStorageMode, setStorageMode, recordLastSync, StorageMode } from './storageConfig';
+import { isValidStudentId } from './studentServer';
 
 export { getStorageConfig, getStorageMode, setStorageMode, recordLastSync };
 export type { StorageMode, AdminUser };
@@ -622,11 +623,13 @@ export async function deleteChapter(id: string): Promise<boolean> {
 
 // ---------------- Concepts -----------------
 export async function getConcepts(chapterId?: string): Promise<Concept[]> {
-  if (supabase) {
-    let query = supabase.from('concepts').select('*, chapter:chapters(*)');
-    if (chapterId) query = query.eq('chapter_id', chapterId);
-    const { data, error } = await query.order('order_index', { ascending: true });
-    if (!error && data) return data;
+  if (shouldQuerySupabase() && supabase) {
+    const data = await fetchAllSupabaseRows<Concept>(
+      'concepts',
+      '*, chapter:chapters(*)',
+      (q) => (chapterId ? q.eq('chapter_id', chapterId) : q).order('order_index', { ascending: true })
+    );
+    if (data.length > 0) return data;
   }
 
   const store = readLocalStore();
@@ -692,21 +695,46 @@ export async function deleteConcept(id: string): Promise<boolean> {
 }
 
 // ---------------- Exams -----------------
-export async function getExams(filters?: { academic_year_id?: string; module_id?: string }): Promise<Exam[]> {
-  if (supabase) {
+export async function getExams(filters?: { academic_year_id?: string; module_id?: string; student_id?: string }): Promise<Exam[]> {
+  if (shouldQuerySupabase() && supabase) {
     try {
       let query = supabase.from('exams').select('*, academic_year:academic_years(*), module:modules(*), exam_questions(id, question_id)');
       if (filters?.academic_year_id) query = query.eq('academic_year_id', filters.academic_year_id);
       if (filters?.module_id) query = query.eq('module_id', filters.module_id);
       const { data, error } = await query.order('created_at', { ascending: false });
       if (!error && data) {
-        return data.map((e: any) => ({
-          ...e,
-          exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
-          question_count: Array.isArray(e.exam_questions) ? e.exam_questions.length : 0,
-          question_ids: Array.isArray(e.exam_questions) ? e.exam_questions.map((eq: any) => eq.question_id) : [],
-          completion_status: 'not_started',
-        }));
+        const latestAttemptByExam = new Map<string, { score_percentage: number }>();
+        const studentIdFilter = filters?.student_id;
+        if (isValidStudentId(studentIdFilter)) {
+          const studentAttempts = await fetchAllSupabaseRows<StudentAttempt>(
+            'student_attempts',
+            'entity_id, score_percentage, is_completed, created_at',
+            (q) =>
+              q
+                .eq('student_id', studentIdFilter)
+                .eq('is_completed', true)
+                .order('created_at', { ascending: false })
+          );
+          for (const att of studentAttempts) {
+            if (att.entity_id && !latestAttemptByExam.has(att.entity_id)) {
+              latestAttemptByExam.set(att.entity_id, {
+                score_percentage: Number(att.score_percentage) || 0,
+              });
+            }
+          }
+        }
+
+        return data.map((e: any) => {
+          const lastAttempt = latestAttemptByExam.get(e.id);
+          return {
+            ...e,
+            exam_type: (e.exam_type === 'midterm' || e.exam_type === 'end_module') ? 'end_module' : (e.exam_type || 'final'),
+            question_count: Array.isArray(e.exam_questions) ? e.exam_questions.length : 0,
+            question_ids: Array.isArray(e.exam_questions) ? e.exam_questions.map((eq: any) => eq.question_id) : [],
+            completion_status: lastAttempt ? 'completed' : 'not_started',
+            previous_score: lastAttempt?.score_percentage,
+          };
+        });
       }
     } catch (err) {
       console.warn('Error fetching exams from Supabase:', err);
@@ -723,13 +751,18 @@ export async function getExams(filters?: { academic_year_id?: string; module_id?
     list = list.filter((e) => e.module_id === filters.module_id);
   }
 
+  const studentId = filters?.student_id;
+  const hasValidStudent = isValidStudentId(studentId);
+
   return list.map((e) => {
     const linkedEq = store.exam_questions.filter((eq) => eq.exam_id === e.id);
     const count = linkedEq.length;
     const qids = linkedEq.map((eq) => eq.question_id);
-    const lastAttempt = store.student_attempts
-      .filter((a) => a.entity_id === e.id && a.is_completed)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    const lastAttempt = hasValidStudent
+      ? store.student_attempts
+          .filter((a) => a.student_id === studentId && a.entity_id === e.id && a.is_completed)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      : undefined;
 
     return {
       ...e,
@@ -1659,32 +1692,91 @@ export async function syncLocalStoreToSupabase(store: DatabaseStore): Promise<vo
 }
 
 // ---------------- Bookmarks -----------------
-export async function getBookmarks(studentId = 'default_student', category?: string): Promise<Bookmark[]> {
-  const store = readLocalStore();
-  let list = store.bookmarks.filter((b) => b.student_id === studentId);
-  if (category) {
-    list = list.filter((b) => b.category === category);
+export async function getBookmarks(studentId: string, category?: string): Promise<Bookmark[]> {
+  if (!isValidStudentId(studentId)) return [];
+
+  let list: Bookmark[] = [];
+  let supaSucceeded = false;
+
+  if (shouldQuerySupabase() && supabase) {
+    try {
+      let query = supabase
+        .from('bookmarks')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('created_at', { ascending: false });
+      if (category) {
+        query = query.eq('category', category);
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        list = data as Bookmark[];
+        supaSucceeded = true;
+      }
+    } catch (e) {
+      console.warn('Error fetching bookmarks from Supabase:', e);
+    }
   }
+
+  if (!supaSucceeded) {
+    const store = readLocalStore();
+    list = store.bookmarks.filter((b) => b.student_id === studentId);
+    if (category) {
+      list = list.filter((b) => b.category === category);
+    }
+  }
+
+  if (list.length === 0) return [];
   const fullQuestions = await getQuestions();
+  const questionMap = new Map(fullQuestions.map((q) => [q.id, q]));
   return list.map((b) => ({
     ...b,
-    question: fullQuestions.find((q) => q.id === b.question_id),
+    question: questionMap.get(b.question_id),
   }));
 }
 
 export async function toggleBookmark(
-  studentId = 'default_student',
+  studentId: string,
   questionId: string,
   category: 'important' | 'review_later' | 'not_understood',
   notes?: string,
   action?: 'toggle' | 'save' | 'remove'
 ): Promise<Bookmark | null> {
+  if (!isValidStudentId(studentId)) {
+    throw new Error('Valid student_id is required');
+  }
+
+  let supaExisting: Bookmark | null = null;
+  if (shouldQuerySupabase() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('question_id', questionId)
+        .maybeSingle();
+      if (!error && data) {
+        supaExisting = data as Bookmark;
+      }
+    } catch (e) {
+      console.warn('Error checking bookmark in Supabase:', e);
+    }
+  }
+
   const store = readLocalStore();
   const existingIndex = store.bookmarks.findIndex(
     (b) => b.student_id === studentId && b.question_id === questionId
   );
+  const existing = supaExisting || (existingIndex > -1 ? store.bookmarks[existingIndex] : null);
 
-  if (action === 'remove') {
+  if (action === 'remove' || (existing && action !== 'save' && notes === undefined && existing.category === category)) {
+    if (shouldQuerySupabase() && supabase) {
+      try {
+        await supabase.from('bookmarks').delete().eq('student_id', studentId).eq('question_id', questionId);
+      } catch (e) {
+        console.warn('Error removing bookmark from Supabase:', e);
+      }
+    }
     if (existingIndex > -1) {
       store.bookmarks.splice(existingIndex, 1);
       writeLocalStore(store);
@@ -1692,29 +1784,35 @@ export async function toggleBookmark(
     return null;
   }
 
-  if (existingIndex > -1) {
-    if (action === 'save' || notes !== undefined) {
-      store.bookmarks[existingIndex].category = category;
-      store.bookmarks[existingIndex].notes = notes;
-      writeLocalStore(store);
-      return store.bookmarks[existingIndex];
+  if (existing) {
+    const updatedNotes = notes !== undefined ? notes : existing.notes;
+    const updated: Bookmark = {
+      ...existing,
+      category,
+      notes: updatedNotes,
+    };
+    if (shouldQuerySupabase() && supabase) {
+      try {
+        await supabase
+          .from('bookmarks')
+          .update({ category, notes: updatedNotes ?? null })
+          .eq('student_id', studentId)
+          .eq('question_id', questionId);
+      } catch (e) {
+        console.warn('Error updating bookmark in Supabase:', e);
+      }
     }
-
-    if (store.bookmarks[existingIndex].category === category) {
-      // Toggle off
-      store.bookmarks.splice(existingIndex, 1);
-      writeLocalStore(store);
-      return null;
+    if (existingIndex > -1) {
+      store.bookmarks[existingIndex] = updated;
     } else {
-      // Switch category
-      store.bookmarks[existingIndex].category = category;
-      writeLocalStore(store);
-      return store.bookmarks[existingIndex];
+      store.bookmarks.push(updated);
     }
+    writeLocalStore(store);
+    return updated;
   }
 
   const newBookmark: Bookmark = {
-    id: `bm-${Date.now()}`,
+    id: `bm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     student_id: studentId,
     question_id: questionId,
     category,
@@ -1722,24 +1820,97 @@ export async function toggleBookmark(
     created_at: new Date().toISOString(),
   };
 
+  if (shouldQuerySupabase() && supabase) {
+    try {
+      await supabase.from('bookmarks').insert(newBookmark);
+    } catch (e) {
+      console.warn('Error inserting bookmark into Supabase:', e);
+    }
+  }
+
   store.bookmarks.push(newBookmark);
   writeLocalStore(store);
   return newBookmark;
 }
 
-export async function deleteBookmark(id: string): Promise<boolean> {
+export async function deleteBookmark(id: string, studentId: string): Promise<boolean> {
+  if (!isValidStudentId(studentId)) return false;
+
+  if (shouldQuerySupabase() && supabase) {
+    try {
+      await supabase.from('bookmarks').delete().eq('id', id).eq('student_id', studentId);
+    } catch (e) {
+      console.warn('Error deleting bookmark from Supabase:', e);
+    }
+  }
+
   const store = readLocalStore();
-  store.bookmarks = store.bookmarks.filter((b) => b.id !== id);
+  store.bookmarks = store.bookmarks.filter((b) => !(b.id === id && b.student_id === studentId));
   writeLocalStore(store);
   return true;
 }
 
 // ---------------- Student Attempts -----------------
 export async function getStudentAttempts(
-  studentId = 'default_student',
+  studentId: string,
   entityId?: string,
   includeAnswers = false
 ): Promise<StudentAttempt[]> {
+  if (!isValidStudentId(studentId)) return [];
+
+  if (shouldQuerySupabase() && supabase) {
+    try {
+      let supaFailed = false;
+      const attempts: StudentAttempt[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        let q = supabase
+          .from('student_attempts')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (entityId) q = q.eq('entity_id', entityId);
+        const { data, error } = await q;
+        if (error) {
+          console.warn('Error fetching student attempts from Supabase:', error);
+          supaFailed = true;
+          break;
+        }
+        if (!data || data.length === 0) break;
+        attempts.push(...(data as StudentAttempt[]));
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      if (!supaFailed) {
+        if (!includeAnswers || attempts.length === 0) return attempts;
+
+        const answersByAttempt = new Map<string, StudentAnswer[]>();
+        const attemptIds = attempts.map((a) => a.id);
+        for (let i = 0; i < attemptIds.length; i += 100) {
+          const chunk = attemptIds.slice(i, i + 100);
+          const chunkAnswers = await fetchAllSupabaseRows<StudentAnswer>('student_answers', '*', (q) =>
+            q.in('attempt_id', chunk)
+          );
+          for (const ans of chunkAnswers) {
+            const list = answersByAttempt.get(ans.attempt_id) || [];
+            list.push(ans);
+            answersByAttempt.set(ans.attempt_id, list);
+          }
+        }
+
+        return attempts.map((attempt) => ({
+          ...attempt,
+          answers: answersByAttempt.get(attempt.id) || [],
+        }));
+      }
+    } catch (e) {
+      console.warn('Error fetching student attempts from Supabase:', e);
+    }
+  }
+
   const store = readLocalStore();
   const filtered = store.student_attempts
     .filter((a) => a.student_id === studentId && (!entityId || a.entity_id === entityId))
@@ -1756,9 +1927,35 @@ export async function getStudentAttempts(
   });
 }
 
-export async function getAttempt(id: string): Promise<StudentAttempt | null> {
+export async function getAttempt(id: string, studentId?: string): Promise<StudentAttempt | null> {
+  if (!isValidStudentId(studentId)) return null;
+
+  if (shouldQuerySupabase() && supabase) {
+    try {
+      const { data: attempt, error } = await supabase
+        .from('student_attempts')
+        .select('*')
+        .eq('id', id)
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+      if (!error) {
+        if (!attempt) return null;
+        const answers = await fetchAllSupabaseRows<StudentAnswer>('student_answers', '*', (q) =>
+          q.eq('attempt_id', id)
+        );
+        return {
+          ...(attempt as StudentAttempt),
+          answers,
+        };
+      }
+    } catch (e) {
+      console.warn('Error fetching attempt from Supabase:', e);
+    }
+  }
+
   const store = readLocalStore();
-  const attempt = store.student_attempts.find((a) => a.id === id);
+  const attempt = store.student_attempts.find((a) => a.id === id && a.student_id === studentId);
   if (!attempt) return null;
   const answers = store.student_answers.filter((ans) => ans.attempt_id === id);
   return {
@@ -1786,12 +1983,16 @@ export async function recordAttempt(data: {
     time_taken_seconds?: number;
   }[];
 }): Promise<StudentAttempt> {
+  if (!isValidStudentId(data.student_id)) {
+    throw new Error('Valid student_id is required to record an attempt');
+  }
+
   const store = readLocalStore();
-  const attemptId = `att-${Date.now()}`;
+  const attemptId = `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const newAttempt: StudentAttempt = {
     id: attemptId,
-    student_id: data.student_id || 'default_student',
+    student_id: data.student_id,
     mode: data.mode,
     entity_id: data.entity_id,
     title: data.title,
@@ -1826,11 +2027,12 @@ export async function recordAttempt(data: {
 
   writeLocalStore(store);
 
-  if (supabase) {
+  if (shouldQuerySupabase() && supabase) {
     try {
       await supabase.from('student_attempts').insert(newAttempt);
-      if (insertedAnswers.length > 0) {
-        await supabase.from('student_answers').insert(insertedAnswers);
+      for (let i = 0; i < insertedAnswers.length; i += 200) {
+        const chunk = insertedAnswers.slice(i, i + 200);
+        await supabase.from('student_answers').insert(chunk);
       }
     } catch (e) {
       console.warn('Error recording student attempt in Supabase:', e);
@@ -1845,14 +2047,23 @@ export async function recordAttempt(data: {
 
 // ---------------- Repeated Concepts -----------------
 // ---------------- Reset Student Progress -----------------
-export async function resetStudentProgress(studentId = 'default_student'): Promise<{ success: boolean; message: string }> {
-  // 1. Delete from Supabase if connected
-  if (supabase) {
+export async function resetStudentProgress(studentId: string): Promise<{ success: boolean; message: string }> {
+  if (!isValidStudentId(studentId)) {
+    return { success: false, message: 'Valid student session required' };
+  }
+
+  // 1. Delete ONLY this student's records from Supabase if active
+  if (shouldQuerySupabase() && supabase) {
     try {
-      const { data: attempts } = await supabase.from('student_attempts').select('id').eq('student_id', studentId);
-      if (attempts && attempts.length > 0) {
+      const attempts = await fetchAllSupabaseRows<{ id: string }>('student_attempts', 'id', (q) =>
+        q.eq('student_id', studentId)
+      );
+      if (attempts.length > 0) {
         const attemptIds = attempts.map((a) => a.id);
-        await supabase.from('student_answers').delete().in('attempt_id', attemptIds);
+        for (let i = 0; i < attemptIds.length; i += 100) {
+          const chunk = attemptIds.slice(i, i + 100);
+          await supabase.from('student_answers').delete().in('attempt_id', chunk);
+        }
       }
       await supabase.from('student_attempts').delete().eq('student_id', studentId);
     } catch (e) {
@@ -1860,7 +2071,7 @@ export async function resetStudentProgress(studentId = 'default_student'): Promi
     }
   }
 
-  // 2. Delete from Local Store
+  // 2. Delete ONLY this student's records from Local Store
   const store = readLocalStore();
   const studentAttemptIds = new Set(
     store.student_attempts.filter((a) => a.student_id === studentId).map((a) => a.id)
@@ -1869,7 +2080,7 @@ export async function resetStudentProgress(studentId = 'default_student'): Promi
   store.student_answers = store.student_answers.filter((ans) => !studentAttemptIds.has(ans.attempt_id));
   writeLocalStore(store);
 
-  return { success: true, message: 'تم مسح كافة النتائج والحلول السابقة بنجاح' };
+  return { success: true, message: 'تم مسح كافة النتائج والحلول السابقة الخاصة بك بنجاح' };
 }
 
 export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
@@ -1989,7 +2200,7 @@ export async function getRepeatedConcepts(): Promise<RepeatedConceptStat[]> {
 }
 
 // ---------------- Weakness Analysis -----------------
-export async function getWeaknessMetrics(studentId = 'default_student'): Promise<WeaknessMetric[]> {
+export async function getWeaknessMetrics(studentId: string): Promise<WeaknessMetric[]> {
   const [allQuestions, allConcepts, allChapters, allSubjects] = await Promise.all([
     getQuestions(),
     getConcepts(),
@@ -1999,24 +2210,54 @@ export async function getWeaknessMetrics(studentId = 'default_student'): Promise
 
   let relevantAnswers: StudentAnswer[] = [];
 
-  if (supabase) {
-    try {
-      const { data: attempts } = await supabase.from('student_attempts').select('id').eq('student_id', studentId);
-      if (attempts && attempts.length > 0) {
-        const attemptIds = attempts.map((a) => a.id);
-        const { data: answers } = await supabase.from('student_answers').select('*').in('attempt_id', attemptIds);
-        if (answers) relevantAnswers = answers;
-      }
-    } catch (e) {
-      console.warn('Error fetching weakness metrics from Supabase:', e);
-    }
-  }
+  if (isValidStudentId(studentId)) {
+    let supaSucceeded = false;
 
-  if (relevantAnswers.length === 0) {
-    const store = readLocalStore();
-    const studentAttempts = store.student_attempts.filter((a) => a.student_id === studentId);
-    const attemptIds = studentAttempts.map((a) => a.id);
-    relevantAnswers = store.student_answers.filter((ans) => attemptIds.includes(ans.attempt_id));
+    if (shouldQuerySupabase() && supabase) {
+      try {
+        let supaFailed = false;
+        const attemptIds: string[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        while (true) {
+          const { data: attempts, error } = await supabase
+            .from('student_attempts')
+            .select('id')
+            .eq('student_id', studentId)
+            .range(from, from + pageSize - 1);
+          if (error) {
+            console.warn('Error fetching weakness attempts from Supabase:', error);
+            supaFailed = true;
+            break;
+          }
+          if (!attempts || attempts.length === 0) break;
+          attemptIds.push(...attempts.map((a) => a.id));
+          if (attempts.length < pageSize) break;
+          from += pageSize;
+        }
+
+        if (!supaFailed) {
+          supaSucceeded = true;
+          for (let i = 0; i < attemptIds.length; i += 100) {
+            const chunk = attemptIds.slice(i, i + 100);
+            const answers = await fetchAllSupabaseRows<StudentAnswer>('student_answers', '*', (q) =>
+              q.in('attempt_id', chunk)
+            );
+            relevantAnswers.push(...answers);
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching weakness metrics from Supabase:', e);
+      }
+    }
+
+    if (!supaSucceeded) {
+      relevantAnswers = [];
+      const store = readLocalStore();
+      const studentAttempts = store.student_attempts.filter((a) => a.student_id === studentId);
+      const attemptIds = new Set(studentAttempts.map((a) => a.id));
+      relevantAnswers = store.student_answers.filter((ans) => attemptIds.has(ans.attempt_id));
+    }
   }
 
   // Tally by concept
@@ -2024,9 +2265,10 @@ export async function getWeaknessMetrics(studentId = 'default_student'): Promise
     string,
     { total: number; correct: number; incorrect: number }
   >();
+  const questionMap = new Map(allQuestions.map((item) => [item.id, item]));
 
   relevantAnswers.forEach((ans) => {
-    const q = allQuestions.find((item) => item.id === ans.question_id);
+    const q = questionMap.get(ans.question_id);
     if (!q || !q.concept_id) return;
 
     const current = conceptStats.get(q.concept_id) || { total: 0, correct: 0, incorrect: 0 };
@@ -2120,9 +2362,9 @@ export async function searchContent(query: string) {
 }
 
 // ---------------- Stats -----------------
-export async function getPlatformStats(studentId = 'default_student') {
+export async function getPlatformStats(studentId: string) {
   let exactTotalQuestions = 0;
-  if (supabase) {
+  if (shouldQuerySupabase() && supabase) {
     try {
       const { count } = await supabase.from('questions').select('*', { count: 'exact', head: true });
       if (typeof count === 'number') exactTotalQuestions = count;
@@ -2143,33 +2385,75 @@ export async function getPlatformStats(studentId = 'default_student') {
 
   let studentAttempts: StudentAttempt[] = [];
   let studentAnswers: StudentAnswer[] = [];
+  let bookmarksCount = 0;
 
-  if (supabase) {
-    try {
-      const { data: attempts } = await supabase.from('student_attempts').select('*').eq('student_id', studentId);
-      if (attempts && attempts.length > 0) {
-        studentAttempts = attempts;
-        const attemptIds = attempts.map((a) => a.id);
-        const { data: answers } = await supabase.from('student_answers').select('*').in('attempt_id', attemptIds);
-        if (answers) studentAnswers = answers;
+  if (isValidStudentId(studentId)) {
+    let supaSucceeded = false;
+
+    if (shouldQuerySupabase() && supabase) {
+      try {
+        let supaFailed = false;
+        let from = 0;
+        const pageSize = 1000;
+        while (true) {
+          const { data: attempts, error } = await supabase
+            .from('student_attempts')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+          if (error) {
+            console.warn('Error fetching platform student attempts from Supabase:', error);
+            supaFailed = true;
+            break;
+          }
+          if (!attempts || attempts.length === 0) break;
+          studentAttempts.push(...(attempts as StudentAttempt[]));
+          if (attempts.length < pageSize) break;
+          from += pageSize;
+        }
+
+        if (!supaFailed) {
+          supaSucceeded = true;
+          const attemptIds = studentAttempts.map((a) => a.id);
+          for (let i = 0; i < attemptIds.length; i += 100) {
+            const chunk = attemptIds.slice(i, i + 100);
+            const answers = await fetchAllSupabaseRows<StudentAnswer>('student_answers', '*', (q) =>
+              q.in('attempt_id', chunk)
+            );
+            studentAnswers.push(...answers);
+          }
+
+          const { count: bmCount } = await supabase
+            .from('bookmarks')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', studentId);
+          if (typeof bmCount === 'number') {
+            bookmarksCount = bmCount;
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching platform student stats from Supabase:', e);
       }
-    } catch (e) {
-      console.warn('Error fetching platform student stats from Supabase:', e);
     }
-  }
 
-  if (studentAttempts.length === 0) {
-    const store = readLocalStore();
-    studentAttempts = store.student_attempts.filter((a) => a.student_id === studentId);
-    studentAnswers = store.student_answers.filter((ans) =>
-      studentAttempts.some((a) => a.id === ans.attempt_id)
-    );
+    if (!supaSucceeded) {
+      studentAttempts = [];
+      studentAnswers = [];
+      bookmarksCount = 0;
+      const store = readLocalStore();
+      studentAttempts = store.student_attempts
+        .filter((a) => a.student_id === studentId)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const attemptIds = new Set(studentAttempts.map((a) => a.id));
+      studentAnswers = store.student_answers.filter((ans) => attemptIds.has(ans.attempt_id));
+      bookmarksCount = store.bookmarks.filter((b) => b.student_id === studentId).length;
+    }
   }
 
   const questionsAnswered = studentAnswers.length;
   const correctCount = studentAnswers.filter((ans) => ans.is_correct).length;
   const overallAccuracy = questionsAnswered > 0 ? Math.round((correctCount / questionsAnswered) * 100) : 0;
-  const bookmarksCount = 0;
 
   return {
     total_years: allYears.length,

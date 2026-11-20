@@ -14,6 +14,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Exam, AcademicYear, Module } from '@/lib/types';
+import { studentFetch } from '@/lib/studentClient';
 
 export default function CompleteExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -28,7 +29,7 @@ export default function CompleteExamsPage() {
   const loadData = async () => {
     try {
       const [examsRes, yearsRes, modulesRes] = await Promise.all([
-        fetch('/api/exams'),
+        studentFetch('/api/exams'),
         fetch('/api/academic-years'),
         fetch('/api/modules'),
       ]);
@@ -59,7 +60,7 @@ export default function CompleteExamsPage() {
 
     setResetting(true);
     try {
-      const res = await fetch('/api/attempts?student_id=default_student', { method: 'DELETE' });
+      const res = await studentFetch('/api/attempts', { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         try {

@@ -22,6 +22,7 @@ import {
 import { Question, StudentAttempt } from '@/lib/types';
 import QuestionCard from './QuestionCard';
 import RetrySession from './RetrySession';
+import { studentFetch } from '@/lib/studentClient';
 
 interface ExamResultsViewProps {
   title: string;
@@ -82,7 +83,7 @@ export default function ExamResultsView({
   // Fetch updated attempts if examId is provided
   useEffect(() => {
     if (examId) {
-      fetch(`/api/attempts?entity_id=${examId}&include_answers=true`)
+      studentFetch(`/api/attempts?entity_id=${examId}&include_answers=true`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success && Array.isArray(data.data)) {

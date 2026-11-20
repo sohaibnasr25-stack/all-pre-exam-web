@@ -19,6 +19,7 @@ import {
 import SearchModal from './SearchModal';
 import ThemeToggle from './ThemeToggle';
 import StorageModeBadge from './StorageModeBadge';
+import { getOrCreateStudentId } from '@/lib/studentClient';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -100,6 +101,7 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    getOrCreateStudentId();
     checkNavFit(true);
 
     const header = headerRef.current;

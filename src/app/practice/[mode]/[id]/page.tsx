@@ -28,6 +28,7 @@ import QuestionCard from '@/components/QuestionCard';
 import QuestionNavigation from '@/components/QuestionNavigation';
 import UnansweredWarningDialog from '@/components/UnansweredWarningDialog';
 import ExamResultsView from '@/components/ExamResultsView';
+import { studentFetch } from '@/lib/studentClient';
 
 interface PracticePageProps {
   params: Promise<{
@@ -96,7 +97,7 @@ function PracticeInner({ params }: PracticePageProps) {
           url = `/api/bookmarks`;
         }
 
-        const res = await fetch(url);
+        const res = await (mode === 'bookmarks_practice' ? studentFetch(url) : fetch(url));
         const data = await res.json();
 
         if (!data.success) {
@@ -149,7 +150,7 @@ function PracticeInner({ params }: PracticePageProps) {
         }
 
         // Preload bookmarks & personal notes
-        const bRes = await fetch('/api/bookmarks');
+        const bRes = await studentFetch('/api/bookmarks');
         const bData = await bRes.json();
         if (bData.success) {
           const map: Record<string, BookmarkCategory> = {};
@@ -164,7 +165,7 @@ function PracticeInner({ params }: PracticePageProps) {
 
         // Preload past attempts for this exam
         try {
-          const attRes = await fetch(`/api/attempts?entity_id=${id}&include_answers=true`);
+          const attRes = await studentFetch(`/api/attempts?entity_id=${id}&include_answers=true`);
           const attData = await attRes.json();
           if (attData.success && Array.isArray(attData.data)) {
             setPastAttempts(attData.data);
@@ -292,7 +293,7 @@ function PracticeInner({ params }: PracticePageProps) {
   ) => {
     if (!currentQ) return;
     try {
-      const res = await fetch('/api/bookmarks', {
+      const res = await studentFetch('/api/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -377,7 +378,7 @@ function PracticeInner({ params }: PracticePageProps) {
 
     // Send attempt to API
     try {
-      const attRes = await fetch('/api/attempts', {
+      const attRes = await studentFetch('/api/attempts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

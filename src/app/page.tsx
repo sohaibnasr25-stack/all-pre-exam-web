@@ -17,6 +17,7 @@ import {
   GraduationCap,
   RotateCcw,
 } from 'lucide-react';
+import { studentFetch } from '@/lib/studentClient';
 
 interface PlatformStats {
   total_years: number;
@@ -62,8 +63,8 @@ export default function StudentDashboard() {
   const fetchDashboardData = async () => {
     try {
       const [statsRes, examsRes] = await Promise.all([
-        fetch('/api/stats'),
-        fetch('/api/exams'),
+        studentFetch('/api/stats'),
+        studentFetch('/api/exams'),
       ]);
 
       const statsData = await statsRes.json();
@@ -91,7 +92,7 @@ export default function StudentDashboard() {
     setResetting(true);
     setResetMessage(null);
     try {
-      const res = await fetch('/api/attempts?student_id=default_student', { method: 'DELETE' });
+      const res = await studentFetch('/api/attempts', { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         try {

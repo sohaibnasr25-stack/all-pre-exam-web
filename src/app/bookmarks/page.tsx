@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { Bookmark as BookmarkItem, BookmarkCategory } from '@/lib/types';
+import { studentFetch } from '@/lib/studentClient';
 
 export default function QuestionBankPage() {
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
@@ -27,7 +28,7 @@ export default function QuestionBankPage() {
   const loadBookmarks = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/bookmarks');
+      const res = await studentFetch('/api/bookmarks');
       const data = await res.json();
       if (data.success) {
         setBookmarks(data.data);
@@ -45,7 +46,7 @@ export default function QuestionBankPage() {
 
   const handleRemove = async (id: string) => {
     try {
-      const res = await fetch(`/api/bookmarks?id=${id}`, { method: 'DELETE' });
+      const res = await studentFetch(`/api/bookmarks?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         setBookmarks((prev) => prev.filter((b) => b.id !== id));
@@ -57,7 +58,7 @@ export default function QuestionBankPage() {
 
   const handleSaveNote = async (item: BookmarkItem) => {
     try {
-      const res = await fetch('/api/bookmarks', {
+      const res = await studentFetch('/api/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
